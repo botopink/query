@@ -482,7 +482,7 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // read positionally), and helpers are local closures. "Optional" where/order
 // are 0-length-list sentinels (no `@Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
-pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
+pub default fn query<T>(expr q: string) -> T {
     // ① Materialize the SQL source from the template's parts. A literal call
     // (`query "select …"`) collapses to a single Text part; a holed call
     // (`query "select … where id = ${uid}"`) yields alternating Text + Interp
@@ -493,7 +493,7 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
     // `infer.substituteHoles` swaps in the caller's expression after build().
     var sql = "";
     var holes: Array<string> = [];
-    for (q.parts()) { p ->
+    for (compiler.parts(q)) { p ->
         if (p.kind == "Text") sql = sql + p.text;
         if (p.kind == "Interp") {
             sql = sql + p.code;
@@ -547,19 +547,22 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
         val cnt = cmpToks.length;
         if (cnt == 1)
             if (isHolePlaceholder(lTok.1))
-                q.failAt(
-                    lTok.2,
+                compiler.fail(
                     "query: a hole is a bound value to compare, not a condition; write `field = <hole>`",
+                    at: q,
+                    span: lTok.2,
                 );
         if (cnt > 3)
-            q.failAt(
-                cmpToks.at(3).2,
+            compiler.fail(
                 "query: unexpected '" + cmpToks.at(3).1 + "' in the condition",
+                at: q,
+                span: cmpToks.at(3).2,
             );
         if (cnt == 2)
-            q.failAt(
-                opTok.2,
+            compiler.fail(
                 "query: condition needs a value after '" + opTok.1 + "'",
+                at: q,
+                span: opTok.2,
             );
         val mkCmp = { lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan -> #(lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan) };
         mkCmp(
@@ -716,23 +719,26 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
         val isHoleTok = isHolePlaceholder(tx);
         val holeInStr = tk == "string" && tx.contains("__bp_hole_");
         if (holeInStr)
-            q.failAt(
-                t.2,
+            compiler.fail(
                 "query: a hole is a bound value, never text: it cannot stand inside a string literal",
+                at: q,
+                span: t.2,
             );
         val holeOk = section == "where" || section == "limit";
         if (isHoleTok)
             if (!holeOk)
-                q.failAt(
-                    t.2,
+                compiler.fail(
                     "query: a hole is a bound value, never text: it cannot stand for a field or a table, only for the operand of a comparison or the number of rows",
+                    at: q,
+                    span: t.2,
                 );
         if (!isStructural) {
             val stray = section == "tail" || section == "joinTail";
             if (stray)
-                q.failAt(
-                    t.2,
+                compiler.fail(
                     "query: unexpected '" + tx + "' after the collection",
+                    at: q,
+                    span: t.2,
                 );
             if (section == "head") headToks = headToks.append([t]);
             if (section == "afterFrom") {
@@ -785,28 +791,30 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
                 || tk == "string"
                 || tk == "op";
             if (strayAgg)
-                q.failAt(
-                    t.2,
+                compiler.fail(
                     "query: malformed aggregate '"
                         + aggFn
                         + "': write "
                         + aggFn
                         + "(field), or count(*)",
+                    at: q,
+                    span: t.2,
                 );
             if (closes) {
                 val isCount = aggFn == "count";
                 if (isCount)
                     if (aggArg != "*")
-                        q.failAt(aggSpan, "query: count takes '*': count(*)");
+                        compiler.fail("query: count takes '*': count(*)", at: q, span: aggSpan);
                 if (!isCount)
                     if (aggArg == "" || aggArg == "*")
-                        q.failAt(
-                            aggSpan,
+                        compiler.fail(
                             "query: "
                                 + aggFn
                                 + " takes one field: "
                                 + aggFn
                                 + "(field)",
+                            at: q,
+                            span: aggSpan,
                         );
                 items = items.append([#("agg", aggFn, aggArg, aggSpan)]);
                 inAgg = false;
@@ -822,11 +830,12 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
                         || tx == "min"
                         || tx == "max";
                     if (!isAggFn)
-                        q.failAt(
-                            t.2,
+                        compiler.fail(
                             "query: unknown aggregate '"
                                 + tx
                                 + "' (count, sum, avg, min, max)",
+                            at: q,
+                            span: t.2,
                         );
                     aggFn = tx;
                     aggArg = "";
@@ -838,7 +847,7 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
         }
     }
     if (inAgg)
-        q.failAt(aggSpan, "query: aggregate '" + aggFn + "' is not closed");
+        compiler.fail("query: aggregate '" + aggFn + "' is not closed", at: q, span: aggSpan);
 
     // where clause → `or`-groups of `and`-groups of comparisons (precedence is
     // the nesting: a new `or` closes the current `or`-group, `and` only the
@@ -891,16 +900,17 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
     var limitSpan = Span(0, 0, 1);
     for (limitToks) { lt ->
         if (limitText != "")
-            q.failAt(lt.2, "query: limit takes one number or one hole");
+            compiler.fail("query: limit takes one number or one hole", at: q, span: lt.2);
         val isNum = lt.0 == "number" && !lt.1.contains(".");
         val isHoleLim = isHolePlaceholder(lt.1);
         val okLim = isNum || isHoleLim;
         if (!okLim)
-            q.failAt(
-                lt.2,
+            compiler.fail(
                 "query: limit takes a whole number or a hole, not '"
                     + lt.1
                     + "'",
+                at: q,
+                span: lt.2,
             );
         limitKind = if (isNum) "number" else "hole";
         limitText = lt.1;
@@ -909,7 +919,7 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
     val hasLimit = limitText != "";
     if (hasLimit == false)
         if (section == "limit")
-            q.failAt(srcSpan, "query: limit takes a whole number or a hole");
+            compiler.fail("query: limit takes a whole number or a hole", at: q, span: srcSpan);
 
     // ── shape checks ─────────────────────────────────────────────────────────
     val hasJoin = joinName != "";
@@ -919,62 +929,69 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
     val hasAgg = nAgg > 0;
     if (star)
         if (items.length > 0)
-            q.failAt(
-                srcSpan,
+            compiler.fail(
                 "query: '*' cannot be selected beside fields or aggregates",
+                at: q,
+                span: srcSpan,
             );
     if (!star)
         if (items.length == 0)
-            q.failAt(srcSpan, "query: select needs '*', fields or aggregates");
+            compiler.fail("query: select needs '*', fields or aggregates", at: q, span: srcSpan);
     if (hasGroup)
         if (star)
-            q.failAt(
-                groupSpan,
+            compiler.fail(
                 "query: group by needs fields and aggregates, not '*'",
+                at: q,
+                span: groupSpan,
             );
     for (items) { it0 ->
         val isField = it0.0 == "field";
         if (isField)
             if (hasAgg)
                 if (!hasGroup)
-                    q.failAt(
-                        it0.3,
+                    compiler.fail(
                         "query: '"
                             + it0.1
                             + "' beside an aggregate needs group by "
                             + it0.1,
+                        at: q,
+                        span: it0.3,
                     );
         if (isField)
             if (hasGroup)
                 if (it0.1 != groupName)
-                    q.failAt(
-                        it0.3,
+                    compiler.fail(
                         "query: '"
                             + it0.1
                             + "' is neither the group by field nor an aggregate",
+                        at: q,
+                        span: it0.3,
                     );
     }
     if (hasAgg)
         if (!hasGroup) {
             if (hasOrder)
-                q.failAt(
-                    orderSpan,
+                compiler.fail(
                     "query: order by has nothing to order: an aggregate without group by answers one value",
+                    at: q,
+                    span: orderSpan,
                 );
             if (hasLimit)
-                q.failAt(
-                    limitSpan,
+                compiler.fail(
                     "query: limit has nothing to cut: an aggregate without group by answers one value",
+                    at: q,
+                    span: limitSpan,
                 );
         }
     if (hasGroup)
         if (hasOrder)
             if (orderName != groupName)
-                q.failAt(
-                    orderSpan,
+                compiler.fail(
                     "query: with group by, order by names the group by field '"
                         + groupName
                         + "'",
+                    at: q,
+                    span: orderSpan,
                 );
     // join <Name> on <a.f> = <b.g>: exactly three tokens, `=` between two
     // qualified fields, one of each collection.
@@ -990,27 +1007,29 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
             }
             if (oi == 1)
                 if (ot.1 != "=")
-                    q.failAt(ot.2, "query: a join condition is 'a.f = b.g'");
+                    compiler.fail("query: a join condition is 'a.f = b.g'", at: q, span: ot.2);
             if (oi == 2) onR = ot.1;
             oi = oi + 1;
         }
         if (oi != 3)
-            q.failAt(
-                joinSpan,
+            compiler.fail(
                 "query: join " + joinName + " needs 'on a.f = b.g'",
+                at: q,
+                span: joinSpan,
             );
     }
 
     // ── resolve the source + dual lowering (③ code, ④ reference tree) ─────────
     val src = srcName;
     val jn = joinName;
-    val known = q.lookup(srcName);
-    val joinKnown = if (hasJoin) q.lookup(joinName) else null;
+    val known = compiler.lookup(q, srcName);
+    val joinKnown = if (hasJoin) compiler.lookup(q, joinName) else null;
     if (hasJoin)
         if (joinKnown == null)
-            q.failAt(
-                joinSpan,
+            compiler.fail(
                 "query: unknown collection '" + joinName + "' in scope",
+                at: q,
+                span: joinSpan,
             );
     if (known) {
         binding ->
@@ -1021,14 +1040,14 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
             val qual = ps.at(0) ?? "";
             val fld = ps.at(np - 1) ?? "";
             if (np > 2)
-                q.failAt(
-                    span,
+                compiler.fail(
                     "query: '" + txt + "' has more than one qualifier",
+                    at: q,
+                    span: span,
                 );
             if (np == 1)
                 if (hasJoin)
-                    q.failAt(
-                        span,
+                    compiler.fail(
                         "query: after a join every field is qualified: "
                             + src
                             + "."
@@ -1037,18 +1056,21 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
                             + jn
                             + "."
                             + txt,
+                        at: q,
+                        span: span,
                     );
             val isQual = np == 2;
             val okQual = qual == src || qual == jn;
             if (isQual)
                 if (!okQual)
-                    q.failAt(
-                        span,
+                    compiler.fail(
                         "query: '"
                             + qual
                             + "' is neither '"
                             + src
                             + "' nor a joined collection",
+                        at: q,
+                        span: span,
                     );
             val side = if (qual == jn) "1" else "0";
             val out = if (hasJoin)
@@ -1105,8 +1127,7 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
             val okL = lq == src || lq == jn;
             val okR = rq == src || rq == jn;
             if (!okL)
-                q.failAt(
-                    onSpan,
+                compiler.fail(
                     "query: '"
                         + lq
                         + "' is neither '"
@@ -1114,10 +1135,11 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
                         + "' nor '"
                         + jn
                         + "'",
+                    at: q,
+                    span: onSpan,
                 );
             if (!okR)
-                q.failAt(
-                    onSpan,
+                compiler.fail(
                     "query: '"
                         + rq
                         + "' is neither '"
@@ -1125,11 +1147,14 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
                         + "' nor '"
                         + jn
                         + "'",
+                    at: q,
+                    span: onSpan,
                 );
             if (lq == rq)
-                q.failAt(
-                    onSpan,
+                compiler.fail(
                     "query: a join condition compares a field of each collection",
+                    at: q,
+                    span: onSpan,
                 );
             val lIsSrc = lq == src;
             val lf = onL.split(".").at(1) ?? "";
@@ -1431,13 +1456,15 @@ pub default fn query<T>(comptime q: @Expr<string>) -> @ExprCustom<T> {
             ref: null,
             children: nodes,
         );
-        return q.custom(root, q.build(pipe));
+        compiler.custom(root);
+        return compiler.build(pipe);
     }
     // Unknown collection → a diagnostic ranged at the offending name *inside* the
     // string (sublanguage-lsp F2), not at the whole template.
-    return q.failAt(
-        srcSpan,
+    return compiler.fail(
         "query: unknown collection '" + srcName + "' in scope",
+        at: q,
+        span: srcSpan,
     );
 }
 
@@ -1570,27 +1597,27 @@ val queryCities = [
 ];
 
 test "query: select * returns the whole collection" {
-    val all = query "select * from queryCities";
+    val all = query @`select * from queryCities`;
     assert all.length == 3;
 }
 
 test "query: where filters, order by sorts, select projects a field" {
-    val names = query "select name from queryCities where pop >= 5 order by name asc";
+    val names = query @`select name from queryCities where pop >= 5 order by name asc`;
     assert names.join(",") == "Lyon,Paris";
 }
 
 test "query: order by desc reverses" {
-    val desc = query "select name from queryCities order by pop desc";
+    val desc = query @`select name from queryCities order by pop desc`;
     assert desc.join(",") == "Paris,Lyon,Nice";
 }
 
 test "query: where with a string literal" {
-    val one = query "select pop from queryCities where name = 'Paris'";
+    val one = query @`select pop from queryCities where name = 'Paris'`;
     assert one.join(",") == "9";
 }
 
 test "query: multi-field select projects a tuple per row" {
-    val rows = query "select name, pop from queryCities where pop >= 5 order by name asc";
+    val rows = query @`select name, pop from queryCities where pop >= 5 order by name asc`;
     val labels = rows.map({ r ->
         val #(name, pop) = r;
         name + ":" + pop.toString()
@@ -1599,21 +1626,21 @@ test "query: multi-field select projects a tuple per row" {
 }
 
 test "query: triple-quoted multi-line form tokenizes the same" {
-    val names = query """
+    val names = query @`
         select name from queryCities
         where pop >= 5
         order by name asc
-    """;
+    `;
     assert names.join(",") == "Lyon,Paris";
 }
 
 test "query: where with and narrows both predicates" {
-    val mid = query "select name from queryCities where pop >= 5 and pop <= 9 order by name asc";
+    val mid = query @`select name from queryCities where pop >= 5 and pop <= 9 order by name asc`;
     assert mid.join(",") == "Lyon,Paris";
 }
 
 test "query: where with or unions predicates" {
-    val some = query "select name from queryCities where pop <= 3 or pop >= 9 order by name asc";
+    val some = query @`select name from queryCities where pop <= 3 or pop >= 9 order by name asc`;
     assert some.join(",") == "Nice,Paris";
 }
 
@@ -1622,12 +1649,12 @@ test "query: where with or unions predicates" {
 // precedence flipped to `(a || b) && c` only Lyon would survive — the assertion below
 // pins the structural `or`-of-`and` lowering.
 test "query: where precedence is or over and over comparison" {
-    val rows = query "select name from queryCities where pop >= 9 or pop >= 5 and name = 'Lyon'";
+    val rows = query @`select name from queryCities where pop >= 9 or pop >= 5 and name = 'Lyon'`;
     assert rows.join(",") == "Lyon,Paris";
 }
 
 test "query: not-equal operator <> maps to !=" {
-    val notLyon = query "select name from queryCities where name <> 'Lyon' order by name asc";
+    val notLyon = query @`select name from queryCities where name <> 'Lyon' order by name asc`;
     assert notLyon.join(",") == "Nice,Paris";
 }
 
@@ -1637,42 +1664,42 @@ test "query: not-equal operator <> maps to !=" {
 // `substituteHoles` pass swaps in the caller's expression after `q.build(…)`).
 test "query: ${} interp inlines a runtime value as the right-hand operand" {
     val threshold = 5;
-    val names = query "select name from queryCities where pop >= ${threshold} order by name asc";
+    val names = query @`select name from queryCities where pop >= ${threshold} order by name asc`;
     assert names.join(",") == "Lyon,Paris";
 }
 
 test "query: ${} interp inlines a runtime value on both sides" {
     val limit = 9;
     val ge = 5;
-    val mid = query "select name from queryCities where pop >= ${ge} and pop <= ${limit} order by name asc";
+    val mid = query @`select name from queryCities where pop >= ${ge} and pop <= ${limit} order by name asc`;
     assert mid.join(",") == "Lyon,Paris";
 }
 
 test "query: a hole is any expression" {
     val next = { -> 5 };
-    val names = query "select name from queryCities where pop >= ${next()} order by name asc";
+    val names = query @`select name from queryCities where pop >= ${next()} order by name asc`;
     assert names.join(",") == "Lyon,Paris";
     val base = 2;
-    val plus = query "select name from queryCities where pop > ${base * 2
-        + 1} order by name asc";
+    val plus = query @`select name from queryCities where pop > ${base * 2
+        + 1} order by name asc`;
     assert plus.join(",") == "Paris";
 }
 
 test "query: a hole on the left, a string hole, holes in or and and" {
     val pivot = 5;
-    val left = query "select name from queryCities where ${pivot} <= pop order by name asc";
+    val left = query @`select name from queryCities where ${pivot} <= pop order by name asc`;
     assert left.join(",") == "Lyon,Paris";
     val who = "Nice";
-    val one = query "select pop from queryCities where name = ${who}";
+    val one = query @`select pop from queryCities where name = ${who}`;
     assert one.join(",") == "3";
     val lo = 3;
     val hi = 9;
-    val ends = query "select name from queryCities where pop = ${lo} or pop = ${hi} order by name asc";
+    val ends = query @`select name from queryCities where pop = ${lo} or pop = ${hi} order by name asc`;
     assert ends.join(",") == "Nice,Paris";
 }
 
 fn queryAdults(minAge: i32) -> Array<string> {
-    return query "select name from queryCities where pop >= ${minAge} order by name asc";
+    return query @`select name from queryCities where pop >= ${minAge} order by name asc`;
 }
 
 test "query: a hole reads a parameter" {
