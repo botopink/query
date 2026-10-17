@@ -18,6 +18,8 @@
 ////     `first`/`firstWhere`, `any`/`anyWhere`.
 ////   - `cast`/`ofType` are omitted: there are no runtime type tags to dispatch on.
 
+import {compiler, compiler.CustomNode, compiler.Span} from "std";
+
 pub type Query<T>(
     items: Array<T>,
 ) {
