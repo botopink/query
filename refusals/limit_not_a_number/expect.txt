@@ -1,2 +1,2 @@
 error: query: limit takes a whole number or a hole, not 'abc'
-  --> src/main.bp:12:50
+  --> src/main.bp:12:51

@@ -1,2 +1,2 @@
 error: query: a join condition compares a field of each collection
-  --> src/main.bp:12:56
+  --> src/main.bp:12:57

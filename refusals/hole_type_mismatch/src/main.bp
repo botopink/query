@@ -6,6 +6,6 @@ val people = [Person(name: "Ann", age: 30)];
 
 fn main() {
     val min = "x";
-    val r = query "select name from people where age >= ${min}";
+    val r = query @`select name from people where age >= ${min}`;
     @print(r.length);
 }

@@ -6,6 +6,6 @@ val people = [Person(name: "Ann", age: 30)];
 
 fn main() {
     val col = "name";
-    val r = query "select ${col} from people";
+    val r = query @`select ${col} from people`;
     @print(r.length);
 }

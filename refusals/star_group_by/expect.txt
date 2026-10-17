@@ -1,2 +1,2 @@
 error: query: group by needs fields and aggregates, not '*'
-  --> src/main.bp:12:50
+  --> src/main.bp:12:51

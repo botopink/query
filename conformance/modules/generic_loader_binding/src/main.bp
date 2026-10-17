@@ -5,7 +5,7 @@
 // into the compiler core:
 //
 //   1. bare value/fn      `import {of}…`    → `of(xs)` unqualified
-//   2. bare template fn   `import {query}…` → `query "…"` expands at comptime
+//   2. bare template fn   `import {query}…` → `` query @`…` `` expands at comptime
 //   3. namespace member   `import {query}…` → `query.of(…)` resolves at runtime
 //
 // `of` is an ordinary exported function (a destructured `require`); `query` is a
@@ -32,10 +32,10 @@ fn adultsByName() -> string {
         .join(", ");
 }
 
-// 2) bare template fn — `query "…"` captures the SQL-subset string and expands
+// 2) bare template fn — `` query @`…` `` captures the SQL-subset string and expands
 //    to the fluent layer at compile time (the expansion calls `of`, in scope).
 fn bigCities() -> string {
-    val names = query "select name from cities where pop >= 5 order by name asc";
+    val names = query @`select name from cities where pop >= 5 order by name asc`;
     return names.join(", ");
 }
 

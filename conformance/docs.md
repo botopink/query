@@ -7,7 +7,7 @@
 > Front: [`../../specs/1.0.10-beta/00-compiler-carry-over/09-ecosystem-residuals/README.md`](../../../specs/1.0.10-beta/00-compiler-carry-over/09-ecosystem-residuals/README.md)
 
 `query` is botopink's answer to C#'s **LINQ**: a fluent query vocabulary over
-`Array<T>`, plus a SQL-subset `query "…"` template. It is **opt-in** — reached via
+`Array<T>`, plus a SQL-subset `` query @`…` `` template. It is **opt-in** — reached via
 `from "query"`, never auto-loaded into the type environment — and **pure
 botopink**: the whole library is `modules/query/src/query.bp`, with zero compiler surface.
 
@@ -40,7 +40,7 @@ only modules a consumer sees. There is no embed and no per-lib registry — the 
 names query.
 
 Three forms reach the library once it is imported — a bare value `of(xs)`, the bare template
-fn `query "…"`, and the namespace member `query.of(…)`:
+fn `` query @`…` ``, and the namespace member `query.of(…)`:
 
 <!-- example: generic_loader_binding -->
 
@@ -63,7 +63,7 @@ Wrap an array with `query.of(...)`, then chain. Every operator returns a fresh
 `selectMany` flattens: the per-item selector returns an `Array<U>` and the
 results are concatenated into one `Query<U>`.
 
-## The `query "…"` query string
+## The `` query @`…` `` query string
 
 `query` is also a **template function**: a SQL-subset string is parsed at comptime
 and expanded into the fluent pipeline. Keywords are lowercase. Grammar:
@@ -114,13 +114,13 @@ The referenced collection is resolved against the caller's top-level scope. The
 expansion emits **unqualified** fluent source
 (`of(Name).where(…).orderBy(…).select(…).toArray()`), so it resolves wherever
 `of` / the collection are in scope. The query may be written single-line
-(`query "…"`) or triple-quoted multi-line (`query """ … """`) — the lexer scans
+(`` query @`…` ``) or triple-quoted multi-line (`` query @` … ` ``) — the lexer scans
 character-by-character and treats newlines and tabs as ordinary token boundaries,
 so the two forms parse identically.
 
 ### Front-end (lexer → parser → dual lowering)
 
-`query "…"` runs a real three-stage front-end at comptime — no string
+`` query @`…` `` runs a real three-stage front-end at comptime — no string
 `split`/`join` scanning:
 
 1. **lexer** — a char-by-char scanner turns the query into a `Token[]`, each token
@@ -157,11 +157,11 @@ and a persistence library (dbcontext's `DbContext`, decision 398) implements and
 - **The SQL target** — `from User` over an entity on a `QueryContext`, `self.db.query "…"`
   and `#[query "…"]` wait on `01-checker` step 29 (the template method and the template
   annotation) and on reading typed meta in a template body.
-- **`query "…"` resolves only `val` collections, not `var`** — the template reads
+- **`` query @`…` `` resolves only `val` collections, not `var`** — the template reads
   the caller's comptime scope snapshot, which captures immutable `val` bindings
   only. The fluent `of(listas)` / `query.of(listas)` form queries any `var`/`val`.
 
-> Cross-module `query "…"` resolves through the package-handle binding — a
+> Cross-module `` query @`…` `` resolves through the package-handle binding — a
 > consumer writes `import query, {of} from "query"`, and the `query` handle
 > binds the package's `pub default fn` (`package-default-dsl`, v0.beta.14;
 > the underlying bare-imported template-fn binding landed earlier in

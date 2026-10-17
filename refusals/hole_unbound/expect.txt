@@ -1,2 +1,2 @@
 error: unbound variable 'missing'
- --> src/main.bp:8:59
+ --> src/main.bp:8:60

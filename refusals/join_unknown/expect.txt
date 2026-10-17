@@ -1,2 +1,2 @@
 error: query: unknown collection 'nowhere' in scope
-  --> src/main.bp:12:46
+  --> src/main.bp:12:47

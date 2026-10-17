@@ -482,29 +482,125 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // read positionally), and helpers are local closures. "Optional" where/order
 // are 0-length-list sentinels (no `@Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
-pub default fn query<T>(expr q: string) -> T {
-    // ① Materialize the SQL source from the template's parts. A literal call
-    // (`query "select …"`) collapses to a single Text part; a holed call
-    // (`query "select … where id = ${uid}"`) yields alternating Text + Interp
-    // parts. Each Interp's `code` field is the hole's placeholder identifier
-    // (e.g. `__bp_hole_q_0`) — splicing it into the augmented SQL makes the
-    // hole behave like an ordinary operand at lex/parse time; the lowering's
-    // operandCode detects the placeholder prefix and emits it verbatim so
-    // `infer.substituteHoles` swaps in the caller's expression after build().
-    var sql = "";
-    var holes: Array<string> = [];
-    for (compiler.parts(q)) { p ->
-        if (p.kind == "Text") sql = sql + p.text;
-        if (p.kind == "Interp") {
-            sql = sql + p.code;
-            holes = holes.append([p.code]);
-        }
+// `compiler.text` answers a template text as a string literal's content
+// today: each backslash, `"`, `$`, newline, carriage return and tab of the
+// raw text is written `\\`, `\"`, `\$`, `\n`, `\r`, `\t` (decision 577 (5)
+// answers the raw text; the compiler's answer is a 144 defect). `rawChars`
+// reads the raw characters back; `rawOffsets` holds each one's offset in the
+// string `compiler.text` answered — the offset a `Span` names.
+fn unescaped(c: string) -> string {
+    return if (c == "n") "\n" else if (c == "r") "\r" else if (c == "t") "\t" else c;
+}
+
+fn rawChars(text: string) -> string[] {
+    var out: string[] = [];
+    var esc = false;
+    for (text.split("")) { c ->
+        if (esc) {
+            out.push(unescaped(c));
+            esc = false;
+        } else if (c == "\\")
+            esc = true
+        else
+            out.push(c);
     }
-    val sqlLen = sql.split("").length;
-    // Trailing space forces the final token to flush at the end of the scan
-    // (bound to a `val` first — the comptime parser rejects `(expr).method()`).
-    val padded = sql + " ";
-    val chars = padded.split("");
+    return out;
+}
+
+fn rawOffsets(text: string) -> i32[] {
+    var out: i32[] = [];
+    var esc = false;
+    var at = 0;
+    for (text.split("")) { c ->
+        if (esc)
+            esc = false
+        else if (c == "\\") {
+            out.push(at);
+            esc = true;
+        } else
+            out.push(at);
+        at = at + 1;
+    }
+    return out;
+}
+
+pub default fn query<T>(expr q: string) -> T {
+    // ① Read the SQL text. Its `${…}` holes are the template's own syntax
+    // (decision 577 (1)): the raw text is read character by character, each
+    // hole becoming ONE element of `chars` — the placeholder identifier
+    // `__bp_hole_<k>`, which behaves as an ordinary operand at lex/parse time —
+    // and `offs` holding each element's offset in the raw text, so every
+    // token's span is the text's own. The lowering's operandCode detects the
+    // placeholder prefix; `holeCodes` holds each hole's expression, spliced
+    // into the code built and typed where the call stands (14s8-a (e)).
+    val written = compiler.text(q);
+    val raw = rawChars(written);
+    val rawPos = rawOffsets(written);
+    val offsetOf = { k -> rawPos.at(k) ?? written.length };
+    val sqlLen = written.length;
+    var chars: Array<string> = [];
+    var offs: Array<i32> = [];
+    var holes: Array<string> = [];
+    var holeCodes: Array<string> = [];
+    var holeAt = -1;
+    var holeDepth = 0;
+    var scInStr = false;
+    var scEsc = false;
+    var scHole = "";
+    var scSkip = false;
+    var rawAt = 0;
+    for (raw) { c ->
+        val ri = rawAt;
+        rawAt = rawAt + 1;
+        if (scSkip)
+            scSkip = false
+        else if (holeAt < 0) {
+            if (c == "$" && (raw.at(ri + 1) ?? "") == "{") {
+                holeAt = ri;
+                holeDepth = 1;
+                scHole = "";
+                scSkip = true;
+            } else {
+                chars = chars.append([c]);
+                offs = offs.append([offsetOf(ri)]);
+            }
+        } else if (scInStr) {
+            scHole = scHole + c;
+            if (scEsc)
+                scEsc = false
+            else if (c == "\\")
+                scEsc = true
+            else if (c == "\"")
+                scInStr = false;
+        } else if (c == "\"") {
+            scInStr = true;
+            scHole = scHole + c;
+        } else if (c == "{") {
+            holeDepth = holeDepth + 1;
+            scHole = scHole + c;
+        } else if (c == "}") {
+            holeDepth = holeDepth - 1;
+            if (holeDepth == 0) {
+                val placeholder = "__bp_hole_" + holes.length.toString();
+                chars = chars.append([placeholder]);
+                offs = offs.append([offsetOf(holeAt)]);
+                holes = holes.append([placeholder]);
+                holeCodes = holeCodes.append([scHole]);
+                holeAt = -1;
+            } else
+                scHole = scHole + c;
+        } else
+            scHole = scHole + c;
+    }
+    if (holeAt >= 0)
+        compiler.fail(
+            "query: a `\${` hole is not closed",
+            at: q,
+            span: Span(offsetOf(holeAt), offsetOf(holeAt + 2), 1),
+        );
+    // Trailing space forces the final token to flush at the end of the scan.
+    chars = chars.append([" "]);
+    offs = offs.append([sqlLen]);
     // Tokens, projected fields and comparisons are tuples read positionally: the
     // comptime evaluator runs this body untyped, where a label (`t.0`) cannot be
     // resolved to its index, so the elements are addressed by position —
@@ -517,10 +613,9 @@ pub default fn query<T>(expr q: string) -> T {
 
     // ── local helpers (lowering ③) ────────────────────────────────────────────
     // A token's text starts with `__bp_hole_` exactly when it tracks a `${…}`
-    // hole spliced via `q.parts()` (the prefix is reserved for template holes).
-    // The lexer classifies it as an `ident`; here we emit it as a bare
-    // expression in the generated pipeline so the post-build `substituteHoles` pass
-    // swaps in the caller's expression with no further wrapping.
+    // hole read in ① (the prefix is reserved for template holes). The lexer
+    // classifies it as an `ident`; the lowering binds each hole's expression
+    // (`holeCodes`) once and names it `__h<k>` in the generated pipeline.
     val isHolePlaceholder = { txt ->
         val out = if (txt.split("").length < 10)
             false
@@ -595,7 +690,7 @@ pub default fn query<T>(expr q: string) -> T {
     var strClosed = false;
     var pos = 0;
     for (chars) { ch ->
-        val i = pos;
+        val i = offs.at(pos) ?? sqlLen;
         pos = pos + 1;
         val isWs = ch == " " || ch == "\n" || ch == "\r" || ch == "\t";
         val isComma = ch == ",";
@@ -1031,6 +1126,16 @@ pub default fn query<T>(expr q: string) -> T {
                 at: q,
                 span: joinSpan,
             );
+    // What the lowering answers, set inside the `known` branch and handed to
+    // the compiler at the body's end (`compiler.custom` then `compiler.build`).
+    var outRoot = CustomNode(
+        kind: "query",
+        span: Span(0, sqlLen, 1),
+        label: "none",
+        ref: null,
+        children: [],
+    );
+    var outPipe = "[]";
     if (known) {
         binding ->
         // A field reads off `rv` (`row`, or the pair `row.0` / `row.1` after a join).
@@ -1375,7 +1480,7 @@ pub default fn query<T>(expr q: string) -> T {
             else
                 "bindOnce(";
             held = head
-                + holes.at(hi)
+                + (holeCodes.at(hi) ?? "")
                 + ", { __h"
                 + hi.toString()
                 + " -> "
@@ -1449,23 +1554,25 @@ pub default fn query<T>(expr q: string) -> T {
                     ],
                 );
         }
-        val root = CustomNode(
+        outRoot = CustomNode(
             kind: "query",
             span: Span(0, sqlLen, 1),
             label: "none",
             ref: null,
             children: nodes,
         );
-        compiler.custom(root);
-        return compiler.build(pipe);
+        outPipe = pipe;
     }
     // Unknown collection → a diagnostic ranged at the offending name *inside* the
     // string (sublanguage-lsp F2), not at the whole template.
-    return compiler.fail(
-        "query: unknown collection '" + srcName + "' in scope",
-        at: q,
-        span: srcSpan,
-    );
+    if (known == null)
+        compiler.fail(
+            "query: unknown collection '" + srcName + "' in scope",
+            at: q,
+            span: srcSpan,
+        );
+    compiler.custom(outRoot);
+    return compiler.build(outPipe);
 }
 
 // ── tests: fluent layer ─────────────────────────────────────────────────────
@@ -1658,10 +1765,10 @@ test "query: not-equal operator <> maps to !=" {
     assert notLyon.join(",") == "Nice,Paris";
 }
 
-// §G1 — `${expr}` interpolations inside the SQL string become runtime operands
-// (the lex/parse stage threads each hole's placeholder identifier through as if
-// it were an ordinary token; `operandCode` emits it verbatim, so the host's
-// `substituteHoles` pass swaps in the caller's expression after `q.build(…)`).
+// §G1 — `${expr}` holes inside the SQL text become runtime operands (the
+// lex/parse stage threads each hole's placeholder identifier through as if it
+// were an ordinary token; the lowering binds the hole's expression, spliced
+// into the code `compiler.build(…)` answers, decision 577 (1)).
 test "query: ${} interp inlines a runtime value as the right-hand operand" {
     val threshold = 5;
     val names = query @`select name from queryCities where pop >= ${threshold} order by name asc`;
