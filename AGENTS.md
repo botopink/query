@@ -9,7 +9,7 @@
 > (the front that owns this tree in 1.0.10-beta; the v0.beta.7 spec it was born from is gone)
 
 A **C#/LINQ-style query library** for botopink — a fluent, eager, immutable
-`type Query<T>` over `Array<T>`, plus an `query "…"` SQL-subset **template fn**
+`type Query<T>` over `Array<T>`, plus an `` query @`…` `` SQL-subset **template fn**
 that expands (at comptime) to the same fluent pipeline. It is **pure botopink**:
 zero compiler surface, no decorators, no host backing. query is the proof that
 the generic `from "<lib>"` loader works for an ordinary (non-framework) external
@@ -35,7 +35,7 @@ member `modules/query/`**; `from "query"` resolves to it, never to the umbrella.
 query/
 ├── AGENTS.md          ← you are here
 ├── conformance/       ← the reference and its examples (decision 463): `docs.md` (what this lib provides + the grammar + loading notes) and `modules/<example>/` cells (`botopink cell check conformance/`); `conformance/modules/botopink.json` is a workspace whose members are the cells (`"workspaces": ["*"]`, decision 512 of the compiler): it declares what every cell shares — query as the path dependency `../../modules/query`, the version — so a cell's own `botopink.json` holds its name alone, and the cells' dependencies share one code cache, `conformance/modules/.botopinkbuild/cache/` (decision 509; `botopink cell check --cold` reads none of it).
-├── examples.md        ← both forms (fluent + `query "…"`), runnable
+├── examples.md        ← both forms (fluent + `` query @`…` ``), runnable
 ├── botopink.json      ← WORKSPACE: name query · version · description ·
 │                        workspaces ["modules/*", "examples/*"]. No `targets`: a member
 │                        runs on every target the runner is asked for (query is green on
@@ -83,7 +83,7 @@ the single public module AND marks it the package's DEFAULT module (the
 blind `src/` scan. A consumer reaches the named items via `import {…} from "query"`
 (the generic `from "<lib>"` loader), and binds the SQL DSL with `import query`
 (package-default-dsl): the handle `query` resolves to the package's
-`pub default fn query`, so a bare `query "…"` tagged call expands through the
+`pub default fn query`, so a bare `` query @`…` `` tagged call expands through the
 ordinary template path. (The driver keys the alias by the *handle*, not the fn
 name, so a handler need not share the lib's name; this lib keeps the name `query`
 so the generic-loader namespace form `query.of(…)` still resolves through it.)
@@ -102,19 +102,19 @@ member that is a library and lists no `files` is `✗ ships nothing`.
   replaces the earlier one — still true at `feat`), so the
   predicate variants are spelled out: `count`/`countWhere`, `first`/`firstWhere`,
   `any`/`anyWhere`.
-- **`query "…"`** is a template fn returning **`@ExprCustom<T>`**: it captures a
-  SQL-subset string as `@Expr<string>` and runs a real three-stage front-end at
-  comptime — ① a char-by-char **lexer** (`q.text()` → `Token[]`, every token
+- **`` query @`…` ``** is a template fn `query<T>(expr q: string) -> T`: it takes the
+  SQL-subset template text and runs a real three-stage front-end at
+  comptime — ① a char-by-char **lexer** (`compiler.text(q)` → `Token[]`, every token
   span-aware), ② a recursive-descent-style **parser** (tokens → a `SelectStmt`
   value; the `where` clause is split into `or`-of-`and`-of-comparison groups so
   the `or < and < comparison` precedence is structural), then ③/④ **dual lowering**
   of the *same* parse. Grammar:
   `select <* | item[, item…]> from <Name> [join <Name> on <a.f> = <b.g>] [where <cond>] [group by <field>] [order by <field> [asc|desc]] [limit <n | hole>]` (an item is a field or `count(*)`/`sum`/`avg`/`min`/`max`).
-  The single-line `query "…"` and triple-quoted multi-line `query """ … """` forms
+  The single-line and the multi-line template texts
   are equivalent — the lexer treats newlines/tabs as ordinary token boundaries, so
-  layout is free (the `html """…"""` sibling).
+  layout is free (the `` html @`…` `` sibling).
 - **Holes, rows, aggregates, groups, joins (front 137).** A `${…}` hole stands only as an
-  operand of a comparison or as `limit`'s number (anything else is a located `failAt`). The
+  operand of a comparison or as `limit`'s number (anything else is a located `compiler.fail(…, at: q, span: …)`). The
   built code binds every hole once (`bindOnce`/`holeBound`, private to `query.bp`, resolved in
   this module by 112) and ties its type to the field, literal or earlier hole it meets with a
   *witness column* (`src.map({ row -> row.f })`) typed against the source's element type: the
@@ -130,10 +130,10 @@ member that is a library and lists no `files` is `✗ ships nothing`.
   keep their own plans, and a diagnostic in it points at the literal. A `join` is
   `of(a).selectMany({ l -> b.filter({ r -> l.f == r.g }).map({ r -> #(l, r) }) })`, so a row is
   a pair and every field reads `row.0.f` / `row.1.g`.
-- **Lowering ③ → `@Expr<T>` (the executable pipeline).** Walks the `SelectStmt`
+- **Lowering ③ → the built code (the executable pipeline).** Walks the `SelectStmt`
   into unqualified fluent source
   (`of(Name).where({row -> …}).orderBy(…).select(…).toArray()`) and splices it via
-  `q.build(...)`. Behaviour is **byte-for-byte the same** as the pre-refactor
+  `compiler.build(...)`. Behaviour is **byte-for-byte the same** as the pre-refactor
   scanner (single-field projection unwraps, multi-field → a tuple `#(a, b)`, `*` →
   `toArray()`, `=`→`==`, `<>`→`!=`, `and`→`&&`, `'x'`→`"x"`), so runtime/codegen
   across all backends is unchanged and the in-file + `examples/query-linq`
@@ -142,11 +142,11 @@ member that is a library and lists no `files` is `✗ ships nothing`.
   tokens into a generic reference tree: keywords → `keyword`, idents
   (projected fields / source / columns) → `property`, string/number literals →
   `string`/`number`, comparison/logical ops (`= <> < <= > >= and or`) →
-  `operator`. The source node carries `ref` (the `q.lookup` binding) so the LSP
+  `operator`. The source node carries `ref` (the `compiler.lookup(q, name)` binding) so the LSP
   resolves hover/go-to-def to its declaration. Spans are byte offsets into
-  `q.text()`, assigned by the lexer (no `indexOf`/`cursor` recovery any more). An
+  `compiler.text(q)`, assigned by the lexer (no `indexOf`/`cursor` recovery any more). An
   unknown collection — or a malformed condition (a dangling operator) — aborts
-  with `q.failAt(span, …)` ranged at the offending token, not the whole template.
+  with `compiler.fail(message, at: q, span: Span(…))` ranged at the offending token, not the whole template.
 
 ## Conventions
 
@@ -168,7 +168,7 @@ member that is a library and lists no `files` is `✗ ships nothing`.
   a type argument only where the value is born, so the bare form declares
   `unknown[]`. The checker does not flag it yet (`val out = [];` checks clean);
   the §1.4 diagnostic is `00 · 01-checker`'s (C-14).
-  Inside the `query "…"` template body the element type is the tuple the body
+  Inside the `` query @`…` `` template body the element type is the tuple the body
   documents at `modules/query/src/query.bp:375` — a token is `#(string, string, Span)`, a
   projected field `#(string, Span)`, a comparison the seven-element tuple
   `buildCmp` answers.
@@ -204,9 +204,9 @@ The example's `--target erlang` output is one module per `type`, each atom
 (unused `array_range/2` / `array_repeat/2`, unused rebound locals in `Query`) are the
 compiler's emission, not query's. Nothing in this tree names an atom.
 
-## Comptime-eval constraint (why the `query "…"` parser is written the way it is)
+## Comptime-eval constraint (why the `` query @`…` `` parser is written the way it is)
 
-The `query "…"` body runs at comptime in the **persistent Erlang runtime** — the
+The `` query @`…` `` body runs at comptime in the **persistent Erlang runtime** — the
 only comptime evaluator (`../botopink-lang/modules/compiler-core/src/comptime/`
 `template_eval.zig` → `runtime/persistent_erl.zig`). `template_eval.zig` lowers
 **only the template fn itself** with `codegen/erlang.zig` `emitComptimeModule`
@@ -219,9 +219,10 @@ each one names the constraint that still justifies it.
 
 What the body may call:
 
-- **The capture's host functions** — `q.text()`, `q.parts()`, `q.source()`,
-  `q.context()`, `q.bindings()`, `q.lookup(name)` (a binding map or `undefined`),
-  `q.build(code)`, `q.custom(tree, code)`, `q.fail(msg)`, `q.failAt(span, msg)`,
+- **The capture's host functions** — `compiler.text(q)` (the template text, whose
+  `${…}` holes the template parses itself from its raw text and splices into the code it builds, decision 577), `compiler.source(q)`,
+  `compiler.context(q)`, `compiler.bindings(q)`, `compiler.lookup(q, name)` (a binding map or `undefined`),
+  `compiler.build(code)`, `compiler.custom(node)`, `compiler.fail(message, at: q, span: Span(…))`,
   plus `@compilerError`/`@expr`/`@code` — and the host records `Span`,
   `CustomNode`, `Binding`, `Source`, `Context`, whose constructors build maps.
 - **Primitive methods on strings and arrays** — `split`, `join`, `slice`,
@@ -297,17 +298,17 @@ for them.
   **landed.** The old `split`/`join` + `mode` scanner is replaced by a char-by-char
   lexer (`Token[]` with real spans), a parser producing a `SelectStmt` value (the
   `where` clause an `or`-of-`and`-of-comparison tree, so precedence is structural),
-  and two lowerings off the same parse: ③ the executable `@Expr<T>` pipeline
+  and two lowerings off the same parse: ③ the executable pipeline
   (behaviour identical to before) and ④ the `CustomNode` reference tree. New tests
   cover `and`/`or`/precedence/`<>` (`where precedence is or over and over
-  comparison`, …); `q.failAt` at the offending token is implemented but not
+  comparison`, …); `compiler.fail` at the offending token is implemented but not
   asserted in a `.bp` test (a malformed query would abort that module's compile) —
-  the generic failAt-at-span path is covered by the sublanguage-lsp Zig fixtures.
-- **Cross-module `query "…"` (package handle)** — **landed (v0.beta.8, package
+  the generic fail-at-span path is covered by the sublanguage-lsp Zig fixtures.
+- **Cross-module `` query @`…` `` (package handle)** — **landed (v0.beta.8, package
   binding v0.beta.14).** A consumer binds the package with `import query, {of}
   from "query"`: `query` is the package handle (`ImportDecl.package`) and resolves
   to the package's `pub default fn query` (`package-default-dsl`), so
-  `query "select …"` (and the triple-quoted multi-line form) expand in a consumer
+  `` query @`select …` `` (and the multi-line form) expand in a consumer
   module, resolving the collection in the caller's comptime scope. The driver
   (`comptime.zig`) aliases the handler under the handle and `resolveImports` binds
   it — generic, not query-aware. (Before v0.beta.14 the consumer named the fn
@@ -318,14 +319,14 @@ for them.
   Still zero core surface here: the binding is generic loader work, not query-aware.
 
 - **Holes, `limit`, aggregates, `group by`, `join` (front 137, steps 1, 3, 4 in memory)** —
-  **landed.** `query "… ${expr}"` binds the expression once and ties its type to the
+  **landed.** `` query @`… ${expr}` `` binds the expression once and ties its type to the
   field it meets; `limit 1` answers `?T`, `limit n` an array; `count(*)`/`sum`/`avg`/`min`/`max`,
   `group by` and an inner `join` lower to the fluent pipeline. Cells: `modules/query` (holes,
   in-file), `modules/query-test` (the rest, from a consumer module), `examples/query-linq`,
   and `refusals/` (the located errors).
 - **`QueryContext<E>`, `QueryTable`, `QueryColumn` (137 step 2, decision 397 (1))** —
   **declared** in `query.bp`; `modules/query-test` implements `QueryContext` with a context of
-  its own. The SQL target itself (`from User` on a context, `self.db.query "…"`) waits on
+  its own. The SQL target itself (`from User` on a context, `` self.db.query @`…` ``) waits on
   `01-checker` step 29 and on typed meta being readable in a template body.
 
 ### Recorded gaps
@@ -358,9 +359,9 @@ for them.
   `query-linq erlang 0` line is stale and `zig build test-libs` reports it so — expected; the
   library's own gate is `botopink test` per member.
 
-- **`query "…"` resolves only `val` collections, not `var`.** The template reads
+- **`` query @`…` `` resolves only `val` collections, not `var`.** The template reads
   the caller's *comptime* scope snapshot, which captures immutable `val` bindings
-  only, so `query "select … from listas"` where `listas` is a `var` does not
+  only, so `` query @`select … from listas` `` where `listas` is a `var` does not
   resolve. The **fluent** form (`of(listas)` / `query.of(listas)`) is an ordinary
   runtime call and queries any `var` or `val` array (covered by the
   `select over a var listas …` tests). Making the string form see `var`s is
@@ -376,7 +377,7 @@ for them.
 - **Hole-span fidelity in `${…}` form.** A holed template's lex span tracks the
   *flattened* SQL (placeholder identifier inlined), so tokens that follow a hole
   are reported at offsets shifted by the placeholder length, not the original
-  `${…}` byte position. The `q.custom` reference tree is still well-formed; LSP
+  `${…}` byte position. The `compiler.custom` reference tree is still well-formed; LSP
   hover/go-to-def on tokens that precede every hole is exact. v1 acceptable.
 
 ## CI
