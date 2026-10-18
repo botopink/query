@@ -484,48 +484,6 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // read positionally), and helpers are local closures. "Optional" where/order
 // are 0-length-list sentinels (no `@Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
-// `compiler.text` answers a template text as a string literal's content
-// today: each backslash, `"`, `$`, newline, carriage return and tab of the
-// raw text is written `\\`, `\"`, `\$`, `\n`, `\r`, `\t` (decision 577 (5)
-// answers the raw text; the compiler's answer is a 144 defect). `rawChars`
-// reads the raw characters back; `rawOffsets` holds each one's offset in the
-// string `compiler.text` answered — the offset a `Span` names.
-fn unescaped(c: string) -> string {
-    return if (c == "n") "\n" else if (c == "r") "\r" else if (c == "t") "\t" else c;
-}
-
-fn rawChars(text: string) -> string[] {
-    var out: string[] = [];
-    var esc = false;
-    for (text.split("")) { c ->
-        if (esc) {
-            out.push(unescaped(c));
-            esc = false;
-        } else if (c == "\\")
-            esc = true
-        else
-            out.push(c);
-    }
-    return out;
-}
-
-fn rawOffsets(text: string) -> i32[] {
-    var out: i32[] = [];
-    var esc = false;
-    var at = 0;
-    for (text.split("")) { c ->
-        if (esc)
-            esc = false
-        else if (c == "\\") {
-            out.push(at);
-            esc = true;
-        } else
-            out.push(at);
-        at = at + 1;
-    }
-    return out;
-}
-
 pub default fn query<T>(expr q: string) -> T {
     // ① Read the SQL text. Its `${…}` holes are the template's own syntax
     // (decision 577 (1)): the raw text is read character by character, each
@@ -536,9 +494,7 @@ pub default fn query<T>(expr q: string) -> T {
     // placeholder prefix; `holeCodes` holds each hole's expression, spliced
     // into the code built and typed where the call stands (14s8-a (e)).
     val written = compiler.text(q);
-    val raw = rawChars(written);
-    val rawPos = rawOffsets(written);
-    val offsetOf = { k -> rawPos.at(k) ?? written.length };
+    val raw = written.split("");
     val sqlLen = written.length;
     var chars: Array<string> = [];
     var offs: Array<i32> = [];
@@ -554,9 +510,7 @@ pub default fn query<T>(expr q: string) -> T {
     for (raw) { c ->
         val ri = rawAt;
         rawAt = rawAt + 1;
-        if (scSkip)
-            scSkip = false
-        else if (holeAt < 0) {
+        if (scSkip) scSkip = false else if (holeAt < 0) {
             if (c == "$" && (raw.at(ri + 1) ?? "") == "{") {
                 holeAt = ri;
                 holeDepth = 1;
@@ -564,7 +518,7 @@ pub default fn query<T>(expr q: string) -> T {
                 scSkip = true;
             } else {
                 chars = chars.append([c]);
-                offs = offs.append([offsetOf(ri)]);
+                offs = offs.append([ri]);
             }
         } else if (scInStr) {
             scHole = scHole + c;
@@ -585,20 +539,18 @@ pub default fn query<T>(expr q: string) -> T {
             if (holeDepth == 0) {
                 val placeholder = "__bp_hole_" + holes.length.toString();
                 chars = chars.append([placeholder]);
-                offs = offs.append([offsetOf(holeAt)]);
+                offs = offs.append([holeAt]);
                 holes = holes.append([placeholder]);
                 holeCodes = holeCodes.append([scHole]);
                 holeAt = -1;
-            } else
-                scHole = scHole + c;
-        } else
-            scHole = scHole + c;
+            } else scHole = scHole + c;
+        } else scHole = scHole + c;
     }
     if (holeAt >= 0)
         compiler.fail(
             "query: a `\${` hole is not closed",
             at: q,
-            span: Span(offsetOf(holeAt), offsetOf(holeAt + 2), 1),
+            span: Span(holeAt, holeAt + 2, 1),
         );
     // Trailing space forces the final token to flush at the end of the scan.
     chars = chars.append([" "]);
@@ -944,7 +896,9 @@ pub default fn query<T>(expr q: string) -> T {
         }
     }
     if (inAgg)
-        compiler.fail("query: aggregate '" + aggFn + "' is not closed", at: q, span: aggSpan);
+        compiler.fail("query: aggregate '"
+            + aggFn
+            + "' is not closed", at: q, span: aggSpan);
 
     // where clause → `or`-groups of `and`-groups of comparisons (precedence is
     // the nesting: a new `or` closes the current `or`-group, `and` only the
