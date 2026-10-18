@@ -1,4 +1,5 @@
 import query from "query";
+import {io.terminal.print} from "std";
 
 type City(name: string, pop: i32)
 
@@ -10,5 +11,5 @@ val owners = [Owner(owner: "ana", city: "Lyon")];
 
 fn main() {
     val r = query @`select owner from owners join cities on owners.city = cities.name`;
-    @print(r);
+    print(r);
 }

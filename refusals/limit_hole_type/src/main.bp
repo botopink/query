@@ -1,4 +1,5 @@
 import query from "query";
+import {io.terminal.print} from "std";
 
 type City(name: string, pop: i32)
 
@@ -11,5 +12,5 @@ val owners = [Owner(owner: "ana", city: "Lyon")];
 fn main() {
     val n = "two";
     val r = query @`select name from cities limit ${n}`;
-    @print(r);
+    print(r);
 }

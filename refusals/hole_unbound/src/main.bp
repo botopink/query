@@ -1,4 +1,5 @@
 import query from "query";
+import {io.terminal.print} from "std";
 
 type Person(name: string, age: i32)
 
@@ -6,5 +7,5 @@ val people = [Person(name: "Ann", age: 30)];
 
 fn main() {
     val r = query @`select name from people where age >= ${missing}`;
-    @print(r.length);
+    print(r.length);
 }

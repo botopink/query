@@ -17,6 +17,7 @@
 // is a named export (the fluent constructor). No embed.
 
 import query, {of} from "query";
+import {io.terminal.print} from "std";
 
 type Person(name: string, age: i32)
 
@@ -190,15 +191,15 @@ fn cityOfOrders() -> string {
 }
 
 fn main() {
-    @print(adultNames()); // Ann, Cy
-    @print(evenSquares()); // 4-16-36
-    @print(loudNames()); // ANN / CY / DAN
-    @print(bigCityNames()); // Lyon, Paris
-    @print(bigCityLabels()); // Lyon:5, Paris:9
-    @print(squareBigBoxes()); // sq
-    @print(citiesAtLeast(5)); // Lyon,Paris
-    @print(biggestCity()); // Paris
-    @print(totalsByCity()); // Lyon=16,Nice=7,Paris=4
+    print(adultNames()); // Ann, Cy
+    print(evenSquares()); // 4-16-36
+    print(loudNames()); // ANN / CY / DAN
+    print(bigCityNames()); // Lyon, Paris
+    print(bigCityLabels()); // Lyon:5, Paris:9
+    print(squareBigBoxes()); // sq
+    print(citiesAtLeast(5)); // Lyon,Paris
+    print(biggestCity()); // Paris
+    print(totalsByCity()); // Lyon=16,Nice=7,Paris=4
 }
 
 test "list → query → join: adult names, sorted" {

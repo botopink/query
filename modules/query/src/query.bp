@@ -345,7 +345,7 @@ pub behavior QueryContext<E> {
         self: Self<E>,
         sql: string,
         params: Array<string>,
-    ) -> @Result<Array<T>, E>;
+    ) -> Result<Array<T>, E>;
 }
 
 // ── constructors ──────────────────────────────────────────────────────────────

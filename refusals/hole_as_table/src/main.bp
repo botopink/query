@@ -1,4 +1,5 @@
 import query from "query";
+import {io.terminal.print} from "std";
 
 type Person(name: string, age: i32)
 
@@ -7,5 +8,5 @@ val people = [Person(name: "Ann", age: 30)];
 fn main() {
     val t = people;
     val r = query @`select name from ${t}`;
-    @print(r.length);
+    print(r.length);
 }

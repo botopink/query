@@ -1,2 +1,2 @@
 error: query: after a join every field is qualified: owners.owner or cities.owner
-  --> src/main.bp:12:28
+  --> src/main.bp:13:28

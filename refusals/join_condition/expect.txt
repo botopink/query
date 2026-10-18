@@ -1,2 +1,2 @@
 error: query: a join condition is 'a.f = b.g'
-  --> src/main.bp:12:69
+  --> src/main.bp:13:69

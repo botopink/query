@@ -1,2 +1,2 @@
 error: query: unexpected '2' in the condition
-  --> src/main.bp:12:60
+  --> src/main.bp:13:60

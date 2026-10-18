@@ -13,6 +13,7 @@
 // the lib namespace object for the member form.
 
 import {of, query} from "query";
+import {io.terminal.print} from "std";
 
 type City(name: string, pop: i32)
 
@@ -50,9 +51,9 @@ fn squaredEvens() -> string {
 }
 
 pub fn main() {
-    @println(adultsByName()); // Lyon, Paris
-    @println(bigCities()); // Lyon, Paris
-    @println(squaredEvens()); // 4-16-36
+    print(adultsByName()); // Lyon, Paris
+    print(bigCities()); // Lyon, Paris
+    print(squaredEvens()); // 4-16-36
 }
 
 test "bare value/fn: of(...) runs unqualified" {
