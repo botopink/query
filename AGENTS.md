@@ -102,7 +102,7 @@ member that is a library and lists no `files` is `✗ ships nothing`.
   replaces the earlier one — still true at `feat`), so the
   predicate variants are spelled out: `count`/`countWhere`, `first`/`firstWhere`,
   `any`/`anyWhere`.
-- **`` query @`…` ``** is a template fn `query<T>(expr q: string) -> T`: it takes the
+- **`` query @`…` ``** is a template fn `query<T>(syntax q: string) -> T`: it takes the
   SQL-subset template text and runs a real three-stage front-end at
   comptime — ① a char-by-char **lexer** (`compiler.text(q)` → `Token[]`, every token
   span-aware), ② a recursive-descent-style **parser** (tokens → a `SelectStmt`

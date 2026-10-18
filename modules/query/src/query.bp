@@ -484,7 +484,7 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // read positionally), and helpers are local closures. "Optional" where/order
 // are 0-length-list sentinels (no `@Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
-pub default fn query<T>(expr q: string) -> T {
+pub default fn query<T>(syntax q: string) -> T {
     // ① Read the SQL text. Its `${…}` holes are the template's own syntax
     // (decision 577 (1)): the raw text is read character by character, each
     // hole becoming ONE element of `chars` — the placeholder identifier
