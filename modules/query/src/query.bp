@@ -338,11 +338,12 @@ pub type QueryTable(
 
 /// Where a statement runs. `run` sends `sql` with `params` bound positionally
 /// (`$1…$n`, in the order the query's holes are written, each as text) and
-/// answers the rows decoded as `T`; `E` is the implementor's own error, so query
-/// names no library's.
+/// answers the rows decoded as `T`, which the run-time token `t` names (668,
+/// 758); `E` is the implementor's own error, so query names no library's.
 pub behavior QueryContext<E> {
     fn run<T>(
         self: Self<E>,
+        t: type<T>,
         sql: string,
         params: Array<string>,
     ) -> Result<Array<T>, E>;
@@ -354,7 +355,7 @@ pub fn of<T>(xs: Array<T>) -> Query<T> {
     return Query(items: xs);
 }
 
-pub fn empty<T>() -> Query<T> {
+pub fn empty<T>(t: type<T>) -> Query<T> {
     return Query(items: []);
 }
 
@@ -484,7 +485,7 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // read positionally), and helpers are local closures. "Optional" where/order
 // are 0-length-list sentinels (no `Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
-pub default fn query<T>(syntax q: string) -> T {
+pub default fn query(syntax q: string) -> unknown {
     // ① Read the SQL text. Its `${…}` holes are the template's own syntax
     // (decision 577 (1)): the raw text is read character by character, each
     // hole becoming ONE element of `chars` — the placeholder identifier
@@ -1537,7 +1538,7 @@ test "query of/range/repeat/empty construct" {
     assert of([1, 2, 3]).count() == 3;
     assert range(1, 5).toArray().join(",") == "1,2,3,4";
     assert repeat("x", 3).toArray().join(",") == "x,x,x";
-    assert empty().isEmpty();
+    assert empty(i32).isEmpty();
 }
 
 test "query where/select pipeline materializes" {
@@ -1637,7 +1638,7 @@ test "query first on no match returns absent" {
 
 test "query any/anyWhere/all/contains quantifiers" {
     assert of([1, 2, 3]).any();
-    assert !empty().any();
+    assert !empty(i32).any();
     assert of([1, 2, 3]).anyWhere({ n -> n > 2 });
     assert of([2, 4, 6]).all({ n -> n % 2 == 0 });
     assert of([1, 2, 3]).contains(2);

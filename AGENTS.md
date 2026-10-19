@@ -326,7 +326,8 @@ for them.
   and `refusals/` (the located errors).
 - **`QueryContext<E>`, `QueryTable`, `QueryColumn` (137 step 2, decision 397 (1))** —
   **declared** in `query.bp`; `modules/query-test` implements `QueryContext` with a context of
-  its own. The SQL target itself (`from User` on a context, `` self.db.query @`…` ``) waits on
+  its own; `run<T>` takes the run-time token `t: type<T>` (668, 758), `empty` the same token
+  copy, and the `query` template answers `unknown`. The SQL target itself (`from User` on a context, `` self.db.query @`…` ``) waits on
   `01-checker` step 29 and on typed meta being readable in a template body.
 
 ### Recorded gaps

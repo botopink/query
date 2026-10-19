@@ -154,6 +154,7 @@ type RecordingContext(
 ) implement QueryContext<string> {
     pub fn run<T>(
         self: Self,
+        t: type<T>,
         sql: string,
         params: Array<string>,
     ) -> Result<Array<T>, string> {
@@ -177,9 +178,9 @@ test "query-test: QueryTable and QueryColumn describe an entity" {
 
 test "query-test: a QueryContext of its own runs a statement" {
     val ctx = RecordingContext(answer: "");
-    val rows = ctx.run("select * from users where id = $1", ["7"]);
+    val rows = ctx.run(string, "select * from users where id = $1", ["7"]);
     assert rows.isOk();
-    val refused = RecordingContext(answer: "closed").run("select 1", []);
+    val refused = RecordingContext(answer: "closed").run(string, "select 1", []);
     assert refused.isError();
 }
 
