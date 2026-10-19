@@ -1,26 +1,9 @@
 //// Decision 703 — `botopink.json`'s `files` is gone: what a consumer may import is the tree (every module under `src/` outside `src/internal/`, 592 (8)); once B-69 / B-75 land, a manifest still writing `files` is refused, located, naming `src/internal/`; `workspaces` stays (512).
 
 import {io.terminal} from "std";
-import {of, Grouping, QueryTable, QueryColumn} from "query";
+import {orders.Order, orders.byCity};
 
-type Order(city: string, total: i32)
-
-fn describe(group: Grouping<string, Order>) -> string {
-    return group.key + "=" + group.count().toString();
-}
-
+// Refused at `botopink.json`'s `files`: what a consumer may import is the tree, and `src/internal/` keeps a module private.
 pub fn main() -> void {
-    // Every item below is reached because its module is in `query`'s tree, not because a manifest lists a file.
-    val orders = [
-        Order(city: "Lyon", total: 10),
-        Order(city: "Paris", total: 4),
-        Order(city: "Lyon", total: 6),
-    ];
-    terminal.print(of(orders)
-        .groupBy({ o -> o.city })
-        .select(describe)
-        .toArray()
-        .join(","));
-    val table = QueryTable(name: "orders", columns: [QueryColumn(field: "city", column: "city_name")]);
-    terminal.print(table.name + "." + (table.columns[0]?.column ?? ""));
+    terminal.print(byCity([Order(city: "Lyon", total: 10), Order(city: "Paris", total: 4), Order(city: "Lyon", total: 6)]));
 }

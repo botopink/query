@@ -1,0 +1,8 @@
+{
+  "name": "manifest_files_key_refused",
+  "version": "0.0.1",
+  "dependencies": {
+    "query": { "path": "../../../../../modules/query" }
+  },
+  "files": ["main.bp", "orders.bp"]
+}

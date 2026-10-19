@@ -1,0 +1,5 @@
+//// `kit`, a dependency built for commonJS alone.
+
+pub fn twice(n: i32) -> i32 {
+    return n * 2;
+}

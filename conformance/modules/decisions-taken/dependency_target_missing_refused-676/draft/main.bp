@@ -1,11 +1,10 @@
 //// Decision 676 — Every declared dependency's `"targets"` holds every target of the package that declares it, checked at the manifest; 660's order is depth-first by the manifests and by the deepest chain, as built.
 
 import {io.terminal} from "std";
-import {of, range} from "query";
+import {range} from "query";
+import {kit.twice} from "kit";
 
-// Built for every target the package declares; `query` must declare each of them too.
+// Refused at this package's manifest: it builds for erlang, and `kit` declares no erlang target.
 pub fn main() -> void {
-    val squares = range(1, 6).select({ n -> n * n });
-    terminal.print(squares.toArray().join(","));
-    terminal.print(of([3, 1, 2]).orderBy({ n -> n }).first() ?? 0);
+    terminal.print(range(1, 4).select(twice).toArray().join(","));
 }

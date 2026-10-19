@@ -1,0 +1,13 @@
+//// The orders module, reached by being in the tree; the manifest's `files` list is what is refused.
+
+import {of} from "query";
+
+pub type Order(city: string, total: i32)
+
+pub fn byCity(orders: Order[]) -> string {
+    return of(orders)
+        .groupBy({ o -> o.city })
+        .select({ g -> g.key + "=" + g.count().toString() })
+        .toArray()
+        .join(",");
+}

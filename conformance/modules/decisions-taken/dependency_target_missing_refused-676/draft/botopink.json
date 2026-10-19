@@ -1,0 +1,9 @@
+{
+  "name": "dependency_target_missing_refused",
+  "version": "0.0.1",
+  "targets": ["erlang", "commonJS"],
+  "dependencies": {
+    "query": { "path": "../../../../../modules/query" },
+    "kit": { "path": "kit" }
+  }
+}
