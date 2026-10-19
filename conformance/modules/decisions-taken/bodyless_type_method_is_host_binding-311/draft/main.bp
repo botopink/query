@@ -1,0 +1,3 @@
+//// Decision 311 — A method with no body in a `type` is only a host binding; a declared-only method is a `behavior`'s; a template can be an annotation.
+
+pub fn main() -> void {}

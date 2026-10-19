@@ -1,0 +1,3 @@
+//// Decision 284 — Configuration in JSON, case by case.
+
+pub fn main() -> void {}

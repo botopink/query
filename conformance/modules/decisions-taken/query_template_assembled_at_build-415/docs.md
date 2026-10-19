@@ -1,0 +1,3 @@
+# Decision 415 — `self.db.query "…"` is assembled wholly at build through `@Decl`: the template method's receiver and literal are both `comptime` expressions, and `q.lookup(name)` answers the call site's declaration as a read-only `?@Decl` whose data meta is read at build.
+
+[draft/main.bp](draft/main.bp)

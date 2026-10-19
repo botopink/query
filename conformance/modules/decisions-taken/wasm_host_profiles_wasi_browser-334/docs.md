@@ -1,0 +1,3 @@
+# Decision 334 — A wasm build binds to the runtime it runs on; wasmtime with WASI preview 2 first.
+
+[draft/main.bp](draft/main.bp)

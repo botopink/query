@@ -1,0 +1,3 @@
+//// Decision 685 — A template method is found by a name in the call site's scope: `` value.method @`…` `` resolves `method` as a template whose `syntax self: R` receiver takes the receiver (577 (3), 578 (1)); a receiver's type never imports code by itself.
+
+pub fn main() -> void {}
