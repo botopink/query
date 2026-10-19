@@ -9,7 +9,7 @@
 //// API naming notes:
 ////   - Constructors are top-level `pub fn` (`of`/`range`/`repeat`/`empty`).
 ////     `from` is the `import` keyword and cannot name a function, so the wrapper
-////     constructor is `of` (the `Pair.of` shape) — locked across the API and the
+////     constructor is `of` — locked across the API and the
 ////     `query "…"` expansion.
 ////   - Methods are camelCase (`orderByDescending`, not Pascal).
 ////   - There is no arity-based overloading (on commonJS the later of two
