@@ -2,7 +2,7 @@
 //
 // `of(list)` wraps an `Array<T>` (a list) in a fluent `Query<T>`; the query
 // operators (`where`/`select`/`orderBy`/…) each return a fresh `Query`, and
-// `.toArray()` lands back on an ordinary `Array<T>` — which IS an `Iterator<T>`,
+// `.toArray()` lands back on an ordinary `Array<T>` — which IS an `Iter<T>`,
 // so the iterator methods (`map`/`filter`/`fold`/`join`) compose right after.
 // `.join(sep)` is the terminal that renders an iterator to a string.
 //
@@ -38,8 +38,8 @@ fn adultNames() -> string {
         .join(", ");
 }
 
-// 2) Iterator methods on the query result: the returned `Array<T>` is an
-//    `Iterator<T>`, so `fold` folds it left like any iterator.
+// 2) Iter methods on the query result: the returned `Array<T>` is an
+//    `Iter<T>`, so `fold` folds it left like any iterator.
 fn adultAgeSum() -> i32 {
     return of(people)
         .where({ p -> p.age >= 18 })
@@ -60,7 +60,7 @@ fn evenSquares() -> string {
 }
 
 // 4) the iterator methods stand alone on a list too — `map`/`join` without
-//    query, showing the Query result and a raw `Iterator<T>` share the same
+//    query, showing the Query result and a raw `Iter<T>` share the same
 //    vocabulary.
 fn loudNames() -> string {
     return ["ann", "cy", "dan"].map({ n -> n.toUpper() }).join(" / ");
