@@ -562,8 +562,8 @@ pub default fn query(syntax q: string) -> unknown {
     //   token      #(kind, text, span)                        → t.0 t.1 t.2
     //   field      #(name, span)                              → f.0 f.1
     //   comparison #(lKind, lText, opText, opSpan, rKind, rText, hasOp) → cmp.0 … cmp.6
-    val mkTok = { kind, text, span -> #(kind, text, span) };
-    val mkField = { name, span -> #(name, span) };
+    val mkTok: fn(string, string, Span) -> #(string, string, Span) = { kind, text, span -> #(kind, text, span) };
+    val mkField: fn(string, Span) -> #(string, Span) = { name, span -> #(name, span) };
     val blankTok = mkTok("", "", Span(0, 0, 1));
 
     // ── local helpers (lowering ③) ────────────────────────────────────────────
@@ -571,7 +571,7 @@ pub default fn query(syntax q: string) -> unknown {
     // hole read in ① (the prefix is reserved for template holes). The lexer
     // classifies it as an `ident`; the lowering binds each hole's expression
     // (`holeCodes`) once and names it `__h<k>` in the generated pipeline.
-    val isHolePlaceholder = { txt ->
+    val isHolePlaceholder: fn(string) -> bool = { txt ->
         val out = if (txt.split("").length < 10)
             false
         else
@@ -583,7 +583,7 @@ pub default fn query(syntax q: string) -> unknown {
     // Positional extraction counts the items in a `var` (the loop folds
     // `lTok`/`opTok`/`rTok` out); a dangling operator (2 tokens) is a `failAt` at
     // the operator.
-    val buildCmp = { cmpToks ->
+    val buildCmp: fn(Array<#(string, string, Span)>) -> #(string, string, string, Span, string, string, bool, Span, Span) = { cmpToks ->
         var lTok = blankTok;
         var opTok = blankTok;
         var rTok = blankTok;
@@ -602,11 +602,12 @@ pub default fn query(syntax q: string) -> unknown {
                     at: q,
                     span: lTok.2,
                 );
+        val extraTok = cmpToks.at(3) ?? blankTok;
         if (cnt > 3)
             compiler.fail(
-                "query: unexpected '" + cmpToks.at(3).1 + "' in the condition",
+                "query: unexpected '" + extraTok.1 + "' in the condition",
                 at: q,
-                span: cmpToks.at(3).2,
+                span: extraTok.2,
             );
         if (cnt == 2)
             compiler.fail(
@@ -614,7 +615,7 @@ pub default fn query(syntax q: string) -> unknown {
                 at: q,
                 span: opTok.2,
             );
-        val mkCmp = { lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan -> #(lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan) };
+        val mkCmp: fn(string, string, string, Span, string, string, bool, Span, Span) -> #(string, string, string, Span, string, string, bool, Span, Span) = { lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan -> #(lKind, lText, opText, opSpan, rKind, rText, hasOp, lSpan, rSpan) };
         mkCmp(
             lTok.0,
             lTok.1,
@@ -1096,7 +1097,7 @@ pub default fn query(syntax q: string) -> unknown {
     if (known) {
         binding ->
         // A field reads off `rv` (`row`, or the pair `row.0` / `row.1` after a join).
-        val fieldCode = { txt, span, rv ->
+        val fieldCode: fn(string, Span, string) -> string = { txt, span, rv ->
             val ps = txt.split(".");
             val np = ps.length;
             val qual = ps.at(0) ?? "";
@@ -1143,7 +1144,7 @@ pub default fn query(syntax q: string) -> unknown {
         };
         // The collection a field belongs to, as a column: its element type is
         // the type the field is compared against.
-        val witnessOf = { txt ->
+        val witnessOf: fn(string) -> string = { txt ->
             val ps = txt.split(".");
             val np = ps.length;
             val qual = ps.at(0) ?? "";
@@ -1151,7 +1152,7 @@ pub default fn query(syntax q: string) -> unknown {
             val coll = if (np == 2) qual else src;
             coll + ".map({ row -> row." + fld + " })"
         };
-        val operandCode = { knd, txt, span ->
+        val operandCode: fn(string, string, Span) -> string = { knd, txt, span ->
             val isHole = isHolePlaceholder(txt);
             val out = if (isHole)
                 "__h" + holes.indexOf(txt).toString()
@@ -1163,7 +1164,7 @@ pub default fn query(syntax q: string) -> unknown {
                 fieldCode(txt, span, "row");
             out
         };
-        val opCode = { opText ->
+        val opCode: fn(string) -> string = { opText ->
             val out = if (opText == "=")
                 "=="
             else if (opText == "<>")
@@ -1172,7 +1173,7 @@ pub default fn query(syntax q: string) -> unknown {
                 opText;
             out
         };
-        val cmpCode = { cmp ->
+        val cmpCode: fn(#(string, string, string, Span, string, string, bool, Span, Span)) -> string = { cmp ->
             val lc = operandCode(cmp.0, cmp.1, cmp.7);
             val rc = operandCode(cmp.4, cmp.5, cmp.8);
             val oc = opCode(cmp.2);
@@ -1273,7 +1274,7 @@ pub default fn query(syntax q: string) -> unknown {
                 if (!hasGroup)
                     pipe = "queryTake(" + pipe + ", " + limitCode + ")";
         // The aggregate an item names, on a query `qv` of rows.
-        val aggOn = { itm, qv, rv ->
+        val aggOn: fn(#(string, string, string, Span), string, string) -> string = { itm, qv, rv ->
             val fnm = itm.1;
             val fld = if (itm.2 == "*") "" else fieldCode(itm.2, itm.3, rv);
             val lam = "{ " + rv + " -> " + fld + " }";
@@ -1306,7 +1307,7 @@ pub default fn query(syntax q: string) -> unknown {
             }
         if (hasGroup) {
             // one row per group: its key and its aggregates
-            val groupItem = { i1 ->
+            val groupItem: fn(#(string, string, string, Span)) -> string = { i1 ->
                 val out = if (i1.0 == "field")
                     "g.key"
                 else
@@ -1740,7 +1741,7 @@ test "query: ${} interp inlines a runtime value on both sides" {
 }
 
 test "query: a hole is any expression" {
-    val next = { -> 5 };
+    val next: fn() -> i32 = { -> 5 };
     val names = query @`select name from queryCities where pop >= ${next()} order by name asc`;
     assert names.join(",") == "Lyon,Paris";
     val base = 2;
