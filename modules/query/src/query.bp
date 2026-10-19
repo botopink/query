@@ -330,7 +330,7 @@ pub type QueryColumn(
 )
 
 /// The table an entity maps to and its columns — the typed meta (298) a
-/// persistence library records on an entity, `@typeInfo(User).meta(QueryTable)`.
+/// persistence library records on an entity, `compiler.typeInfo(User).meta(QueryTable)`.
 pub type QueryTable(
     name: string,
     columns: Array<QueryColumn>,
@@ -482,7 +482,7 @@ fn bindOnce<H, R>(value: H, body: fn(held: H) -> R) -> R {
 // calls to sibling fns and NO named-type constructors — the whole front-end is
 // inlined here, the private SQL "AST" is modelled with tuples (Erlang tuples,
 // read positionally), and helpers are local closures. "Optional" where/order
-// are 0-length-list sentinels (no `@Option` in the body); compound booleans live
+// are 0-length-list sentinels (no `Option` in the body); compound booleans live
 // in a `val` before any `if (…)` (a parser quirk, not a runtime one).
 pub default fn query<T>(syntax q: string) -> T {
     // ① Read the SQL text. Its `${…}` holes are the template's own syntax
