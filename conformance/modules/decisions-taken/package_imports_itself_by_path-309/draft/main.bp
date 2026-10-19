@@ -1,3 +1,17 @@
 //// Decision 309 — Inside a package, an import of its own module is always by path, never `from`:
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {city.City};
+import {totals.bigCount, totals.summary};
+import {internal.names};
+
+pub fn main() -> void {
+    val cities = [
+        City(name: "Paris", pop: 9),
+        City(name: "Lyon", pop: 5),
+        City(name: "Nice", pop: 3),
+    ];
+    terminal.print(bigCount(cities, 5));
+    terminal.print(names.names(cities));
+    terminal.print(summary(cities));
+}

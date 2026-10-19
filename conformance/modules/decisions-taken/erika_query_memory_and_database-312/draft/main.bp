@@ -1,3 +1,54 @@
 //// Decision 312 — erika queries a database too, as LINQ does: one grammar, two targets, picked by the source.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query, QueryColumn, QueryContext, QueryParam, Row} from "query";
+import {comptime.entity.entity};
+
+#[entity("cities", [QueryColumn(field: "name", column: "name"), QueryColumn(field: "pop", column: "population")])]
+type City(name: string, pop: i32)
+
+// An array source: the query runs in memory.
+val cities = [
+    City(name: "Lyon", pop: 5),
+    City(name: "Paris", pop: 9),
+    City(name: "Nice", pop: 3),
+];
+
+// Where a statement runs. This one prints what it is handed and answers no rows; `string` is its error.
+type Console(label: string) implement QueryContext<string> {
+    fn runMany<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<T[], string> {
+        terminal.print(self.label + " many: " + sql);
+        return [];
+    }
+
+    fn runOne<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<?T, string> {
+        terminal.print(self.label + " one: " + sql);
+        return null;
+    }
+}
+
+// An entity on a context: the same grammar builds SQL and its bound parameters.
+type Atlas(db: Console) {
+    pub fn big(self: Self, min: i32) -> Result<City[], string> {
+        return self.db.query @`select * from City where pop >= ${min} order by name asc`;
+    }
+}
+
+pub fn main() -> void {
+    val inMemory = query @`select name from cities where pop >= 5 order by name asc`;
+    terminal.print(inMemory.join(","));
+    val largest = query @`select name from cities order by pop desc limit 1`;
+    terminal.print(largest ?? "none");
+    val onDatabase = try Atlas(db: Console(label: "atlas")).big(5) catch [];
+    terminal.print(onDatabase.length);
+}

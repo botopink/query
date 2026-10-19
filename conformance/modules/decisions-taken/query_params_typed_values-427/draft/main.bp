@@ -1,3 +1,67 @@
 //// Decision 427 — A query's bound parameters are typed values — erika's `QueryParam` —, each built by the template from the type of the column its hole meets, checked at build.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query, QueryColumn, QueryContext, QueryParam, Row} from "query";
+import {comptime.entity.entity};
+
+#[entity("users", [
+    QueryColumn(field: "id", column: "id"),
+    QueryColumn(field: "name", column: "name"),
+    QueryColumn(field: "active", column: "active"),
+    QueryColumn(field: "score", column: "score"),
+    QueryColumn(field: "nickname", column: "nickname"),
+])]
+type User(id: i32, name: string, active: bool, score: f64, nickname: ?string)
+
+fn show(param: QueryParam) -> string {
+    return case param {
+        Int(value) -> "int " + value.toString();
+        Float(value) -> "float " + value.toString();
+        Text(value) -> "text " + value;
+        Bool(value) -> "bool " + value.toString();
+        Bytes(value) -> "bytes " + value.length.toString();
+        Null -> "null";
+    };
+}
+
+// Where a statement runs. This one prints each bound parameter with its type and answers no rows.
+type Console(label: string) implement QueryContext<string> {
+    fn runMany<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<T[], string> {
+        terminal.print(self.label + ": " + params.map(show).join(", "));
+        return [];
+    }
+
+    fn runOne<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<?T, string> {
+        terminal.print(self.label + ": " + params.map(show).join(", "));
+        return null;
+    }
+}
+
+type Users(db: Console) {
+    // Each hole is built into the `QueryParam` of the column it meets.
+    pub fn find(self: Self, id: i32) -> Result<?User, string> {
+        return self.db.query @`select * from User where id = ${id} limit 1`;
+    }
+
+    pub fn matching(self: Self, name: string, active: bool, score: f64, nickname: ?string, n: i32) -> Result<User[], string> {
+        return self.db.query @`select * from User where name = ${name} and active = ${active} and score >= ${score} and nickname = ${nickname} limit ${n}`;
+    }
+}
+
+pub fn main() -> void {
+    val users = Users(db: Console(label: "params"));
+    val one = try users.find(7) catch null;
+    terminal.print(one?.name ?? "nobody");
+    val many = try users.matching("Ann", true, 2.5, null, 10) catch [];
+    terminal.print(many.length);
+}

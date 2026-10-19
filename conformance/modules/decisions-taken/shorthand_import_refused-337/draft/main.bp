@@ -1,3 +1,18 @@
 //// Decision 337 — The shorthand import goes; `mod m;` binds the namespace `m` in the module that declares it.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {totals.Order, totals.cityTotal};
+import {totals};
+
+pub fn main() -> void {
+    val orders = [
+        Order(city: "Lyon", total: 10),
+        Order(city: "Paris", total: 4),
+        Order(city: "Lyon", total: 6),
+    ];
+    // An item imported by the module's path, then the item.
+    terminal.print(cityTotal(orders, "Lyon"));
+    // The module imported as a namespace, its members read through it.
+    terminal.print(totals.busiest(orders));
+    terminal.print(totals.busiest([]));
+}

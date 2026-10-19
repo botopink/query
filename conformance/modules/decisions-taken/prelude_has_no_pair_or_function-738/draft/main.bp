@@ -1,3 +1,29 @@
 //// Decision 738 — (c), a third option: neither `Pair<A, B>` nor `Function` exists — a pair is the tuple `#(A, B)`, and the function combinators are plain functions of a std module.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {functions.compose} from "std";
+import {of} from "query";
+
+fn double(n: i32) -> i32 {
+    return n * 2;
+}
+
+fn show(n: i32) -> string {
+    return "#" + n.toString();
+}
+
+pub fn main() -> void {
+    val names = of(["Lyon", "Paris", "Nice"]);
+    val pops = of([5, 9, 3]);
+    // A pair is the tuple `#(A, B)`: `zip` builds one per index.
+    val pairs: #(string, i32)[] = names
+        .zip(pops, { name, pop -> #(name, pop) })
+        .toArray();
+    val first = pairs[0] ?? #("none", 0);
+    terminal.print(first._0 + " " + first._1.toString());
+    val #(name, pop) = pairs[1] ?? #("none", 0);
+    terminal.print(name + " " + pop.toString());
+    // A function combinator is a plain function of std's `functions` module.
+    val label = compose(double, show);
+    terminal.print(pops.select(label).toArray().join(","));
+}

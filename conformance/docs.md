@@ -24,6 +24,7 @@ A table, a grammar or a manifest is not a program and is fenced as `text`.
 | *The database target* | `QueryContext<E>`, `QueryTable`, `QueryColumn`, and what a persistence library supplies |
 | *The `query-test` package* | the library's testing member |
 | *Departures* | where the source still writes a form the rules in force have replaced |
+| *Decisions* | [`modules/decisions-taken/`](modules/decisions-taken/): the ledger's index — one `<slug>-<N>/` per code-bearing row of [`../decisions-taken.md`](../decisions-taken.md) (front 166, decisions 646–651), its `docs.md` walking through one example program, `draft/main.bp` until front 166 s4 promotes it to a cell (649) |
 
 ## Loading
 

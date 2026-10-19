@@ -1,0 +1,12 @@
+//// An internal module (`src/internal/`): the package's own, no consumer's; its modules still import it by path.
+
+import {of} from "query";
+import {city.City};
+
+pub fn names(cities: City[]) -> string {
+    return of(cities)
+        .orderBy({ c -> c.name })
+        .select({ c -> c.name })
+        .toArray()
+        .join(", ");
+}

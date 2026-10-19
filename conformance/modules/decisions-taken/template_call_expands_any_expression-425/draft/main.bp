@@ -1,3 +1,48 @@
 //// Decision 425 — A template call expands wherever an expression may stand.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query} from "query";
+
+type Order(city: string, total: i32)
+
+val orders = [
+    Order(city: "Lyon", total: 10),
+    Order(city: "Paris", total: 4),
+    Order(city: "Lyon", total: 6),
+];
+
+type Size { Small, Large }
+
+// A field default.
+type Report(cities: string[] = query @`select city from orders where total > 5`) {
+    // A type's method body.
+    pub fn biggest(self: Self) -> string {
+        return query @`select city from orders order by total desc limit 1` ?? "none";
+    }
+}
+
+fn count(xs: string[]) -> i32 {
+    return xs.length;
+}
+
+fn pick(size: Size) -> string[] {
+    // A `case` arm.
+    return case size {
+        Small -> query @`select city from orders where total < 5`;
+        Large -> query @`select city from orders where total >= 5`;
+    };
+}
+
+pub fn main() -> void {
+    // A destructuring initializer.
+    val #(n, total) = query @`select count(*), sum(total) from orders`;
+    terminal.print(n.toString() + " orders, " + total.toString() + " in all");
+    // An argument.
+    terminal.print(count(query @`select city from orders where city = 'Lyon'`));
+    // A lambda.
+    val above = { min -> query @`select city from orders where total >= ${min}` };
+    terminal.print(above(6).join(","));
+    terminal.print(Report().cities.join(","));
+    terminal.print(Report().biggest());
+    terminal.print(pick(Size.Small).join(","));
+}

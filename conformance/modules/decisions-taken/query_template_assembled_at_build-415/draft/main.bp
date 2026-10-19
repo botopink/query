@@ -1,3 +1,55 @@
 //// Decision 415 — `self.db.query "…"` is assembled wholly at build through `@Decl`: the template method's receiver and literal are both `comptime` expressions, and `q.lookup(name)` answers the call site's declaration as a read-only `?@Decl` whose data meta is read at build.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query, QueryColumn, QueryContext, QueryParam, Row} from "query";
+import {comptime.entity.entity};
+
+// The query reads this type's `QueryTable` at build: the table `members`, and `name` stored as `full_name`.
+#[entity("members", [
+    QueryColumn(field: "id", column: "member_id"),
+    QueryColumn(field: "name", column: "full_name"),
+    QueryColumn(field: "since", column: "joined_year"),
+])]
+type Member(id: i32, name: string, since: i32)
+
+// Where a statement runs. This one prints what it is handed and answers no rows; `string` is its error.
+type Console(label: string) implement QueryContext<string> {
+    fn runMany<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<T[], string> {
+        terminal.print(self.label + " many: " + sql);
+        return [];
+    }
+
+    fn runOne<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<?T, string> {
+        terminal.print(self.label + " one: " + sql);
+        return null;
+    }
+}
+
+type Club(db: Console) {
+    // Assembled wholly at build: `self.db` is the call site's receiver, `Member` the declaration in scope here.
+    pub fn veterans(self: Self, before: i32) -> Result<Member[], string> {
+        return self.db.query @`select * from Member where since < ${before} order by name asc`;
+    }
+
+    pub fn founder(self: Self) -> Result<?Member, string> {
+        return self.db.query @`select * from Member order by since asc limit 1`;
+    }
+}
+
+pub fn main() -> void {
+    val club = Club(db: Console(label: "club"));
+    val veterans = try club.veterans(2000) catch [];
+    terminal.print(veterans.length);
+    val founder = try club.founder() catch null;
+    terminal.print(founder?.name ?? "nobody");
+}

@@ -12,5 +12,7 @@ every example in it is a cell of `modules/`, checked by `botopink cell check con
   - *Departures* — where the source still writes a form the rules in force have replaced.
 - `modules/<cell>/` — one cell each (`loading_imports`, `generic_loader_binding`, `query_context_declared`); `modules/botopink.json`
   is the workspace whose members they are, declaring the shared path dependency on `../../modules/query`.
-- `modules/decisions-taken/<slug>-<N>/` — front 166's decision cells, when a row of `../decisions-taken.md` calls for one;
-  that subtree is front 166's alone (651). None exists yet.
+- `modules/decisions-taken/<slug>-<N>/` — front 166's decision cells (decision 651: the subtree is that front's alone): one
+  per code-bearing row of `../decisions-taken.md`, a `docs.md` (first line generated) and, in phase 1, `draft/main.bp` with any
+  sibling modules it needs (decision 649; no `src/`, no manifest, so `botopink cell check` finds no cell there); kept by
+  `scripts/decision-cells.py` of the meta repository and its CI check 7.

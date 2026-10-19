@@ -1,3 +1,44 @@
 //// Decision 685 — A template method is found by a name in the call site's scope: `` value.method @`…` `` resolves `method` as a template whose `syntax self: R` receiver takes the receiver (577 (3), 578 (1)); a receiver's type never imports code by itself.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+// `query` is imported: it is the name `self.db.query @`…`` finds, a template method whose receiver is `self.db`.
+import {query, QueryColumn, QueryContext, QueryParam, Row} from "query";
+import {comptime.entity.entity};
+
+#[entity("books", [QueryColumn(field: "title", column: "title"), QueryColumn(field: "year", column: "year")])]
+type Book(title: string, year: i32)
+
+// Where a statement runs. This one prints what it is handed and answers no rows; `string` is its error.
+type Console(label: string) implement QueryContext<string> {
+    fn runMany<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<T[], string> {
+        terminal.print(self.label + " many: " + sql);
+        return [];
+    }
+
+    fn runOne<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<?T, string> {
+        terminal.print(self.label + " one: " + sql);
+        return null;
+    }
+}
+
+type Shelf(db: Console) {
+    pub fn recent(self: Self, since: i32) -> Result<Book[], string> {
+        return self.db.query @`select * from Book where year >= ${since} order by year desc`;
+    }
+}
+
+pub fn main() -> void {
+    val shelf = Shelf(db: Console(label: "shelf"));
+    val recent = try shelf.recent(2020) catch [];
+    terminal.print(recent.length);
+}

@@ -1,3 +1,32 @@
 //// Decision 641 — (b) for the names, and no contract with one implementor: every primitive type is written lowercase — `i32`, `i64`, `u32`, `u64`, `f32`, `f64`, `bool`, `string`, `bigint`, `bytes`, `array<T>` — and a capitalised name is a contract shared by several types (`Number`, `Integer`, `Signed`, `Float`); `String`, `Bool`, `BigInt`, `Bytes` and `Array` dissolve into their types, which hold their methods and statics.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of, Query} from "query";
+
+type Reading(sensor: string, value: f64, count: i32, ok: bool)
+
+// `array<T>` and `T[]` are one type, written lowercase like every primitive.
+fn readings() -> array<Reading> {
+    return [
+        Reading(sensor: "a", value: 1.5, count: 2, ok: true),
+        Reading(sensor: "b", value: 2.5, count: 3, ok: false),
+        Reading(sensor: "a", value: 3.0, count: 5, ok: true),
+    ];
+}
+
+fn sensors(q: Query<Reading>) -> string[] {
+    return q.select({ r -> r.sensor }).distinct().toArray();
+}
+
+pub fn main() -> void {
+    val q = of(readings());
+    val mean: f64 = q.where({ r -> r.ok }).average({ r -> r.value });
+    val seen: i32 = q.aggregate(0, { acc, r -> acc + r.count });
+    val names: array<string> = sensors(q);
+    terminal.print(mean);
+    terminal.print(seen);
+    terminal.print(names.join(","));
+    // A primitive's static is the type's own: `string.fromCodepoint`, `array.range`.
+    terminal.print(string.fromCodepoint(65));
+    terminal.print(of(array.range(0, 4)).sum({ n -> n }));
+}

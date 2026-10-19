@@ -1,3 +1,39 @@
 //// Decision 311 — A method with no body in a `type` is only a host binding; a declared-only method is a `behavior`'s; a template can be an annotation.
 
-pub fn main() -> void {}
+import {io.terminal, compiler} from "std";
+import {of} from "query";
+
+type Reading(sensor: string, value: i32)
+
+// A method declared without a body belongs to a behavior: each implementor writes it.
+behavior Source {
+    fn readings(self: Self) -> Reading[];
+}
+
+type Fixed(values: i32[]) implement Source {
+    fn readings(self: Self) -> Reading[] {
+        return self.values.map({ v -> Reading(sensor: "fixed", value: v) });
+    }
+}
+
+// A method with no body in a type is a host binding, and only that: it carries its cells.
+type Host {
+    #[compiler.external(
+        .JavaScript("['a', 'b', 'c'].length"),
+        .Erlang("length([a, b, c])"),
+    )]
+    declare fn sensorCount() -> i32;
+}
+
+fn report(source: Source) -> string {
+    return of(source.readings())
+        .where({ r -> r.value > 1 })
+        .select({ r -> r.sensor + "=" + r.value.toString() })
+        .toArray()
+        .join(",");
+}
+
+pub fn main() -> void {
+    terminal.print(report(Fixed(values: [1, 2, 3])));
+    terminal.print(Host.sensorCount());
+}

@@ -1,3 +1,54 @@
 //// Decision 397 — A database query in a method body is written on the database context — `self.db.query "select * from User where active = true"` —, and `from User` names an entity whose table and columns erika reads from the type at build.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query, QueryColumn, QueryContext, QueryParam, Row} from "query";
+import {comptime.entity.entity};
+
+#[entity("users", [
+    QueryColumn(field: "id", column: "id"),
+    QueryColumn(field: "name", column: "user_name"),
+    QueryColumn(field: "active", column: "active"),
+])]
+type User(id: i32, name: string, active: bool)
+
+// Where a statement runs. This one prints what it is handed and answers no rows; `string` is its error.
+type Console(label: string) implement QueryContext<string> {
+    fn runMany<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<T[], string> {
+        terminal.print(self.label + " many: " + sql);
+        return [];
+    }
+
+    fn runOne<T>(
+        self: Self,
+        sql: string,
+        params: QueryParam[],
+        decode: fn(row: Row) -> Result<T, string>,
+    ) -> Result<?T, string> {
+        terminal.print(self.label + " one: " + sql);
+        return null;
+    }
+}
+
+// One context serves every entity; each query names the entity it reads.
+type Directory(db: Console) {
+    pub fn active(self: Self) -> Result<User[], string> {
+        return self.db.query @`select * from User where active = true`;
+    }
+
+    pub fn named(self: Self, name: string) -> Result<?User, string> {
+        return self.db.query @`select * from User where name = ${name} limit 1`;
+    }
+}
+
+pub fn main() -> void {
+    val directory = Directory(db: Console(label: "users"));
+    val active = try directory.active() catch [];
+    terminal.print(active.length);
+    val ann = try directory.named("Ann") catch null;
+    terminal.print(ann?.name ?? "nobody");
+}

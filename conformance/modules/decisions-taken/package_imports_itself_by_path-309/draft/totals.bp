@@ -1,0 +1,13 @@
+//// The package's `totals` module: it reads the `query` dependency with `from`, its siblings by path.
+
+import {of} from "query";
+import {city.City};
+import {internal.names.names};
+
+pub fn bigCount(cities: City[], min: i32) -> i32 {
+    return of(cities).countWhere({ c -> c.pop >= min });
+}
+
+pub fn summary(cities: City[]) -> string {
+    return names(cities) + " (" + bigCount(cities, 5).toString() + " big)";
+}

@@ -1,0 +1,14 @@
+//// The totals of a list of orders, imported by `main` by its path.
+
+import {of} from "query";
+
+pub type Order(city: string, total: i32)
+
+pub fn cityTotal(orders: Order[], city: string) -> i32 {
+    return of(orders).where({ o -> o.city == city }).sum({ o -> o.total });
+}
+
+pub fn busiest(orders: Order[]) -> string {
+    val top = of(orders).orderByDescending({ o -> o.total }).first();
+    return top?.city ?? "none";
+}

@@ -1,0 +1,12 @@
+//// The program's build layer: `#[entity]` records `query`'s `QueryTable` on the type it annotates, as a persistence library does.
+
+import {compiler} from "std";
+import {QueryColumn, QueryTable} from "query";
+
+pub fn entity(
+    syntax decl: unknown,
+    comptime name: string,
+    comptime columns: QueryColumn[],
+) -> void {
+    compiler.setMeta(QueryTable(name: name, columns: columns));
+}

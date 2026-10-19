@@ -1,3 +1,31 @@
 //// Decision 668 — A function's type parameter is always bound by a parameter, never by the return type alone.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of, Query} from "query";
+
+type City(name: string, pop: i32)
+
+// `T` is bound by the parameter `q`; the return follows from the argument.
+fn firstOr<T>(q: Query<T>, fallback: T) -> T {
+    return q.first() ?? fallback;
+}
+
+// `K` is bound inside a parameter's type, the key function.
+fn keys<T, K>(q: Query<T>, key: fn(item: T) -> K) -> K[] {
+    return q.select(key).distinct().toArray();
+}
+
+// `T` is bound by the type token: the caller names the type once, `nothing(City)`.
+fn nothing<T>(comptime t: type<T>) -> Query<T> {
+    val none: T[] = [];
+    return of(none);
+}
+
+pub fn main() -> void {
+    val cities = of([City(name: "Lyon", pop: 5), City(name: "Nice", pop: 3)]);
+    val fallback = City(name: "none", pop: 0);
+    terminal.print(firstOr(cities, fallback).name);
+    terminal.print(firstOr(nothing(City), fallback).name);
+    terminal.print(keys(cities, { c -> c.pop > 4 }).length);
+    terminal.print(nothing(City).count());
+}

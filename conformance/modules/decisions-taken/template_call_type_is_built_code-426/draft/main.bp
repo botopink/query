@@ -1,3 +1,33 @@
 //// Decision 426 — A template call's type is the type of the code it built for that call, computed at build; the template's signature is a bound, and the call unifies with the type expected where it stands.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query} from "query";
+
+type City(name: string, pop: i32)
+
+val cities = [
+    City(name: "Lyon", pop: 5),
+    City(name: "Paris", pop: 9),
+    City(name: "Nice", pop: 3),
+];
+
+// The call's type is the type of the code built for it: one column is `string[]`.
+fn names() -> string[] {
+    return query @`select name from cities order by name asc`;
+}
+
+pub fn main() -> void {
+    // Inferred from the built code: `string[]`.
+    val all = query @`select name from cities where pop >= 5`;
+    terminal.print(all.join(","));
+    // `limit 1` builds an optional row: `?string`.
+    val biggest: ?string = query @`select name from cities order by pop desc limit 1`;
+    terminal.print(biggest ?? "none");
+    // Two columns build a tuple per row: `#(string, i32)[]`.
+    val rows: #(string, i32)[] = query @`select name, pop from cities where pop < 9`;
+    terminal.print(rows.length);
+    // `select *` builds the rows themselves: `City[]`.
+    val whole: City[] = query @`select * from cities where name = 'Nice'`;
+    terminal.print(whole[0]?.pop ?? 0);
+    terminal.print(names().join(","));
+}

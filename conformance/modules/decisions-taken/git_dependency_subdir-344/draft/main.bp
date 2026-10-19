@@ -1,3 +1,16 @@
 //// Decision 344 — A git dependency may name a package inside its repository: `"subdir"`.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of} from "query";
+
+type Person(name: string, age: i32)
+
+// `query` is the package at `modules/query` of the `botopink/query` repository, reached by `"subdir"`.
+pub fn main() -> void {
+    val people = [Person(name: "Ann", age: 30), Person(name: "Bob", age: 17), Person(name: "Cy", age: 22)];
+    val adults = of(people)
+        .where({ p -> p.age >= 18 })
+        .select({ p -> p.name })
+        .toArray();
+    terminal.print(adults.join(", "));
+}

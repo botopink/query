@@ -1,0 +1,5 @@
+//// This package's own `query` module, named like the `query` library `main` reads.
+
+pub fn describe(label: string, count: i32) -> string {
+    return label + ": " + count.toString();
+}

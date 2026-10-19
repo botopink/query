@@ -1,3 +1,27 @@
 //// Decision 398 — The persistence layer is a library of its own over erika — `dbcontext` (`botopink/dbcontext` at `repository/dbcontext`, 326's rule), botopink's JPA.
 
-pub fn main() -> void {}
+import {io.terminal, compiler} from "std";
+import {QueryTable} from "query";
+import {entity, column, DbContext, StoreError} from "rakun-data";
+
+// `#[entity]` and `#[column]` are the persistence library's; what they record is `query`'s `QueryTable`.
+#[entity("users")]
+type User(
+    id: i32,
+    #[column("user_name")] name: string,
+    active: bool,
+)
+
+// `DbContext` is the persistence library's `QueryContext`; the query on it is `query`'s grammar.
+type Directory(db: DbContext) {
+    pub fn active(self: Self) -> Result<User[], StoreError> {
+        return self.db.query @`select * from User where active = true order by name asc`;
+    }
+}
+
+pub fn main() -> void {
+    val table = comptime compiler.typeInfo(User).meta(QueryTable);
+    terminal.print(table?.name ?? "not an entity");
+    val columns = table?.columns.map({ c -> c.field + "->" + c.column }) ?? [];
+    terminal.print(columns.join(","));
+}

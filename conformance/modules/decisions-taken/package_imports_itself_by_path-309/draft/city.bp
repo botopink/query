@@ -1,0 +1,3 @@
+//// The package's `city` module: the record `totals` and `main` both read.
+
+pub type City(name: string, pop: i32)

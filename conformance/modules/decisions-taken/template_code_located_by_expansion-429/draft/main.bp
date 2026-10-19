@@ -1,3 +1,37 @@
 //// Decision 429 — The compiler locates template-built code by its expansion — every loc-keyed plan keyed by (expansion, offset); this fix lands first and pauses the fronts that would add a padded expansion.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {query} from "query";
+
+type City(name: string, pop: i32)
+
+val cities = [
+    City(name: "Lyon", pop: 5),
+    City(name: "Paris", pop: 9),
+    City(name: "Nice", pop: 3),
+];
+
+// Two expansions with the same text build the same code: each is located by its own expansion, with no padding.
+fn big() -> string[] {
+    return query @`select name from cities where pop >= 5 order by name asc`;
+}
+
+fn alsoBig() -> string[] {
+    return query @`select name from cities where pop >= 5 order by name asc`;
+}
+
+// The same text with a hole: the built lambdas of each expansion keep apart.
+fn atLeast(min: i32) -> string[] {
+    return query @`select name from cities where pop >= ${min} order by name asc`;
+}
+
+fn atLeastAgain(min: i32) -> string[] {
+    return query @`select name from cities where pop >= ${min} order by name asc`;
+}
+
+pub fn main() -> void {
+    terminal.print(big().join(","));
+    terminal.print(alsoBig().join(","));
+    terminal.print(atLeast(9).join(","));
+    terminal.print(atLeastAgain(3).join(","));
+}

@@ -1,3 +1,23 @@
 //// Decision 284 — Configuration in JSON, case by case.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of, query} from "query";
+
+type Setting(key: string, value: string)
+
+// The program's settings are its own data; its manifest holds only its name and its `query` dependency.
+val settings = [
+    Setting(key: "page.size", value: "20"),
+    Setting(key: "page.title", value: "Orders"),
+    Setting(key: "cache.ttl", value: "60"),
+];
+
+pub fn main() -> void {
+    val pageKeys = of(settings)
+        .where({ s -> s.key.startsWith("page.") })
+        .select({ s -> s.key })
+        .toArray();
+    terminal.print(pageKeys.join(","));
+    val title = query @`select value from settings where key = 'page.title' limit 1`;
+    terminal.print(title ?? "untitled");
+}

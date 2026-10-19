@@ -1,3 +1,56 @@
 //// Decision 313 — A repository is a `behavior` annotated `#[repository]`; each method declares its query — erika's or native SQL
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of} from "query";
+import {entity, repository, query, nativeQuery, StoreError} from "rakun-data";
+
+#[entity("users")]
+type User(id: i32, name: string, active: bool)
+
+// Each method declares its query; `#[repository]` generates `Users.Sql(ctx)` and `Users.of(ctx)` from them.
+#[repository]
+behavior Users {
+    #[query @`select * from User where id = ${id} limit 1`]
+    fn find(self: Self, id: i32) -> Result<?User, StoreError>;
+
+    #[query @`select * from User where active = true order by name asc`]
+    fn active(self: Self) -> Result<User[], StoreError>;
+
+    #[nativeQuery("select * from users where user_name = :name limit 1")]
+    fn named(self: Self, name: string) -> Result<?User, StoreError>;
+}
+
+// A caller depends on the behavior; this implementation answers from a list.
+type Listed(users: User[]) implement Users {
+    fn find(self: Self, id: i32) -> Result<?User, StoreError> {
+        return of(self.users).firstWhere({ u -> u.id == id });
+    }
+
+    fn active(self: Self) -> Result<User[], StoreError> {
+        return of(self.users)
+            .where({ u -> u.active })
+            .orderBy({ u -> u.name })
+            .toArray();
+    }
+
+    fn named(self: Self, name: string) -> Result<?User, StoreError> {
+        return of(self.users).firstWhere({ u -> u.name == name });
+    }
+}
+
+fn greet(users: Users, id: i32) -> string {
+    val user = try users.find(id) catch null;
+    return "hello " + (user?.name ?? "stranger");
+}
+
+pub fn main() -> void {
+    val users = Listed(users: [
+        User(id: 1, name: "Bob", active: true),
+        User(id: 2, name: "Ann", active: true),
+        User(id: 3, name: "Cy", active: false),
+    ]);
+    terminal.print(greet(users, 2));
+    terminal.print(greet(users, 9));
+    val active = try users.active() catch [];
+    terminal.print(active.map({ u -> u.name }).join(","));
+}

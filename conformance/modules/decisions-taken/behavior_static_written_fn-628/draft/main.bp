@@ -1,3 +1,48 @@
 //// Decision 628 — In a `behavior`, a member without `self` is a static of the behavior and is written `fn`, never `default fn`: `fn unit() -> Self { … }` with a body is the behavior's own function, called `Shape.unit()`; `fn make() -> Self;` without a body is a static each implementor provides (626's `Configurable`); `default fn` is an instance member with an overridable default body, and nothing else.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of} from "query";
+
+behavior Ranked {
+    // An instance member each implementor provides.
+    fn rank(self: Self) -> i32;
+
+    // An instance member with a default body an implementor may override.
+    default fn above(self: Self, floor: i32) -> bool {
+        return self.rank() > floor;
+    }
+
+    // A static with a body: the behavior's own function, `Ranked.floor()`.
+    fn floor() -> i32 {
+        return 4;
+    }
+
+    // A static without a body: each implementor provides it, `City.placeholder()`.
+    fn placeholder() -> Self;
+}
+
+type City(name: string, pop: i32) implement Ranked {
+    fn rank(self: Self) -> i32 {
+        return self.pop;
+    }
+
+    fn placeholder() -> City {
+        return City(name: "?", pop: 0);
+    }
+}
+
+pub fn main() -> void {
+    val cities = [
+        City(name: "Lyon", pop: 5),
+        City(name: "Paris", pop: 9),
+        City(name: "Nice", pop: 3),
+        City.placeholder(),
+    ];
+    val ranked = of(cities)
+        .where({ c -> c.above(Ranked.floor()) })
+        .orderByDescending({ c -> c.rank() })
+        .select({ c -> c.name })
+        .toArray();
+    terminal.print(ranked.join(", "));
+    terminal.print(of(cities).last()?.name ?? "none");
+}

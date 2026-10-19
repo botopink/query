@@ -1,3 +1,20 @@
 //// Decision 206 — `import {…} from "<name>"` resolves only to a package — std, a bundled package or a declared dependency.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of} from "query";
+import {query.describe};
+
+type City(name: string, pop: i32)
+
+pub fn main() -> void {
+    val cities = [
+        City(name: "Lyon", pop: 5),
+        City(name: "Paris", pop: 9),
+        City(name: "Nice", pop: 3),
+    ];
+    // `of` is the library's: `from "query"` names a package.
+    val big = of(cities).countWhere({ c -> c.pop >= 5 });
+    // `describe` is this package's own `query.bp`: the brace form, no `from`.
+    terminal.print(describe("big cities", big));
+    terminal.print(describe("all cities", of(cities).count()));
+}

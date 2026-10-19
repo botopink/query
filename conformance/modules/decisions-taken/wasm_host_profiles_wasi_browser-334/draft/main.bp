@@ -1,3 +1,19 @@
 //// Decision 334 — A wasm build binds to the runtime it runs on; wasmtime with WASI preview 2 first.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of, repeat} from "query";
+
+type Task(name: string, minutes: i32, done: bool)
+
+// `query` binds no host cell, so one wasm build of this program runs under either profile, `wasi` or `browser`.
+pub fn main() -> void {
+    val tasks = [
+        Task(name: "write", minutes: 30, done: true),
+        Task(name: "test", minutes: 45, done: false),
+        Task(name: "ship", minutes: 15, done: false),
+    ];
+    val open = of(tasks).where({ t -> !t.done });
+    terminal.print(open.sum({ t -> t.minutes }));
+    terminal.print(open.select({ t -> t.name }).toArray().join(" then "));
+    terminal.print(repeat("-", 3).toArray().join(""));
+}

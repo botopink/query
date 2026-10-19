@@ -1,3 +1,32 @@
 //// Decision 594 — Every library runs at build on the wasm comptime runtime (434), jhonstart first; a function only Erlang or Node can run is a located error there.
 
-pub fn main() -> void {}
+import {io.terminal} from "std";
+import {of, range, query} from "query";
+
+type City(name: string, pop: i32)
+
+val cities = [
+    City(name: "Lyon", pop: 5),
+    City(name: "Paris", pop: 9),
+    City(name: "Nice", pop: 3),
+];
+
+fn bigNames() -> string {
+    return of(cities)
+        .where({ c -> c.pop >= 5 })
+        .orderBy({ c -> c.name })
+        .select({ c -> c.name })
+        .toArray()
+        .join(", ");
+}
+
+pub fn main() -> void {
+    // `query` is botopink through and through, so it runs at build on the wasm comptime runtime, whatever the target.
+    val atBuild = comptime bigNames();
+    terminal.print(atBuild);
+    terminal.print(atBuild == bigNames());
+    terminal.print(comptime range(1, 5).aggregate(0, { acc, n -> acc + n }));
+    // The template itself runs at build too: its lexer and parser are botopink.
+    val names = query @`select name from cities where pop < 5`;
+    terminal.print(names.join(","));
+}
