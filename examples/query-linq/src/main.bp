@@ -1,8 +1,8 @@
 // query-linq — querying lists with the query LINQ layer + the iterator methods.
 //
-// `of(list)` wraps an `Array<T>` (a list) in a fluent `Query<T>`; the query
+// `of(list)` wraps an `array<T>` (a list) in a fluent `Query<T>`; the query
 // operators (`where`/`select`/`orderBy`/…) each return a fresh `Query`, and
-// `.toArray()` lands back on an ordinary `Array<T>` — which IS an `Iter<T>`,
+// `.toArray()` lands back on an ordinary `array<T>` — which IS an `Iter<T>`,
 // so the iterator methods (`map`/`filter`/`fold`/`join`) compose right after.
 // `.join(sep)` is the terminal that renders an iterator to a string.
 //
@@ -38,7 +38,7 @@ fn adultNames() -> string {
         .join(", ");
 }
 
-// 2) Iter methods on the query result: the returned `Array<T>` is an
+// 2) Iter methods on the query result: the returned `array<T>` is an
 //    `Iter<T>`, so `fold` folds it left like any iterator.
 fn adultAgeSum() -> i32 {
     return of(people)
@@ -81,7 +81,7 @@ val cities = [
     City(name: "Nice", pop: 3),
 ];
 
-// 5) single-line short form — `select field` projects one column → Array<string>.
+// 5) single-line short form — `select field` projects one column → array<string>.
 //    Expands (at comptime) to:
 //      of(cities).where({ row -> row.pop >= 5 })
 //                .orderBy({ row -> row.name }).select({ row -> row.name }).toArray()
@@ -91,7 +91,7 @@ fn bigCityNames() -> string {
 }
 
 // 6) triple-quoted multi-line form — the `` html @`…` `` sibling. `select a, b`
-//    projects a tuple per row → Array<#(name: string, pop: i32)>; a lambda reads it
+//    projects a tuple per row → array<#(name: string, pop: i32)>; a lambda reads it
 //    by destructuring (`val #(name, pop) = r`).
 fn bigCityLabels() -> string {
     val rows = query @`
@@ -126,8 +126,8 @@ fn squareBigBoxes() -> string {
 }
 
 // 8) a number list consumed straight from ARGUMENT position — the `` query @`…` ``
-//    template expands in place where the call expects an `Array<string>`.
-fn countNames(xs: Array<string>) -> i32 {
+//    template expands in place where the call expects an `array<string>`.
+fn countNames(xs: array<string>) -> i32 {
     return xs.length;
 }
 

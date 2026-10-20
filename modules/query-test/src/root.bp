@@ -156,8 +156,8 @@ type RecordingContext(
         self: Self,
         t: type<T>,
         sql: string,
-        params: Array<string>,
-    ) -> Result<Array<T>, string> {
+        params: array<string>,
+    ) -> Result<array<T>, string> {
         if (self.answer != "") throw self.answer;
         return [];
     }
