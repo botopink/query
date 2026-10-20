@@ -190,7 +190,7 @@ fn cityOfOrders() -> string {
         .join(",");
 }
 
-fn main() {
+fn main() -> void {
     print(adultNames()); // Ann, Cy
     print(evenSquares()); // 4-16-36
     print(loudNames()); // ANN / CY / DAN

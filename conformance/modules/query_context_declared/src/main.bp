@@ -1,7 +1,7 @@
 import {QueryColumn, QueryTable, QueryContext} from "query";
 import {io.terminal.print} from "std";
 
-pub fn main() {
+pub fn main() -> void {
     val table = QueryTable(name: "users", columns: [QueryColumn(field: "name", column: "user_name")]);
     print(table.name);
     print(table.columns.length);

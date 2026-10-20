@@ -5,7 +5,7 @@ type Person(name: string, age: i32)
 
 val people = [Person(name: "Ann", age: 30)];
 
-fn main() {
+fn main() -> void {
     val min = "x";
     val r = query @`select name from people where age >= ${min}`;
     print(r.length);
