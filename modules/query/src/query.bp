@@ -508,7 +508,7 @@ pub default fn query(syntax q: string) -> unknown {
     var scHole = "";
     var scSkip = false;
     var rawAt = 0;
-    for (raw) { c ->
+    for c in raw {
         val ri = rawAt;
         rawAt = rawAt + 1;
         if (scSkip) scSkip = false else if (holeAt < 0) {
@@ -588,7 +588,7 @@ pub default fn query(syntax q: string) -> unknown {
         var opTok = blankTok;
         var rTok = blankTok;
         var idx = 0;
-        for (cmpToks) { ct ->
+        for ct in cmpToks {
             if (idx == 0) lTok = ct;
             if (idx == 1) opTok = ct;
             if (idx == 2) rTok = ct;
@@ -645,7 +645,7 @@ pub default fn query(syntax q: string) -> unknown {
     var curStart = 0;
     var strClosed = false;
     var pos = 0;
-    for (chars) { ch ->
+    for ch in chars {
         val i = offs.at(pos) ?? sqlLen;
         pos = pos + 1;
         val isWs = ch == " " || ch == "\n" || ch == "\r" || ch == "\t";
@@ -741,7 +741,7 @@ pub default fn query(syntax q: string) -> unknown {
     var orderToks: array<#(string, string, Span)> = [];
     var limitToks: array<#(string, string, Span)> = [];
     var section = "head";
-    for (toks) { t ->
+    for t in toks {
         val tk = t.0;
         val tx = t.1;
         val isFrom = tk == "keyword" && tx == "from";
@@ -825,7 +825,7 @@ pub default fn query(syntax q: string) -> unknown {
     var aggFn = "";
     var aggArg = "";
     var aggSpan = Span(0, 0, 1);
-    for (headToks) { t ->
+    for t in headToks {
         val tk = t.0;
         val tx = t.1;
         val nxt = ht.at(hidx + 1) ?? blankTok;
@@ -909,7 +909,7 @@ pub default fn query(syntax q: string) -> unknown {
     var orGroups: array<array<#(string, string, string, Span, string, string, bool, Span, Span)>> = [];
     var curAnd: array<#(string, string, string, Span, string, string, bool, Span, Span)> = [];
     var curCmp: array<#(string, string, Span)> = [];
-    for (whereToks) { t ->
+    for t in whereToks {
         val isAnd = t.0 == "keyword" && t.1 == "and";
         val isOr = t.0 == "keyword" && t.1 == "or";
         val isConn = isAnd || isOr;
@@ -934,7 +934,7 @@ pub default fn query(syntax q: string) -> unknown {
     var orderName = "";
     var orderSpan = Span(0, 0, 1);
     var orderDesc = false;
-    for (orderToks) { ot ->
+    for ot in orderToks {
         val isAsc = ot.1 == "asc";
         val isDesc = ot.1 == "desc";
         if (isDesc) orderDesc = true;
@@ -951,7 +951,7 @@ pub default fn query(syntax q: string) -> unknown {
     var limitKind = "";
     var limitText = "";
     var limitSpan = Span(0, 0, 1);
-    for (limitToks) { lt ->
+    for lt in limitToks {
         if (limitText != "")
             compiler.fail("query: limit takes one number or one hole", at: q, span: lt.2);
         val isNum = lt.0 == "number" && !lt.1.contains(".");
@@ -997,7 +997,7 @@ pub default fn query(syntax q: string) -> unknown {
                 at: q,
                 span: groupSpan,
             );
-    for (items) { it0 ->
+    for it0 in items {
         val isField = it0.0 == "field";
         if (isField)
             if (hasAgg)
@@ -1053,7 +1053,7 @@ pub default fn query(syntax q: string) -> unknown {
     var onSpan = Span(0, 0, 1);
     if (hasJoin) {
         var oi = 0;
-        for (onToks) { ot ->
+        for ot in onToks {
             if (oi == 0) {
                 onL = ot.1;
                 onSpan = ot.2;
@@ -1367,8 +1367,8 @@ pub default fn query(syntax q: string) -> unknown {
         // first witness rides in `holeBound`; the others are `holeTie`s ahead of
         // the pipeline. The number of rows is a whole number.
         var ties: array<#(i32, string)> = [];
-        for (orGroups) { andGroup ->
-            for (andGroup) { cmp ->
+        for andGroup in orGroups {
+            for cmp in andGroup {
                 val lh = isHolePlaceholder(cmp.1);
                 val rh = isHolePlaceholder(cmp.5);
                 val anyH = lh || rh;
@@ -1405,10 +1405,10 @@ pub default fn query(syntax q: string) -> unknown {
         // the query writes them (the first hole outermost).
         var tieVals = "";
         var ti = 0;
-        for (holes) { hq ->
+        for hq in holes {
             val mine = ties.filter({ tt -> tt.0 == ti });
             var k = 0;
-            for (mine) { mt ->
+            for mt in mine {
                 if (k > 0)
                     tieVals = tieVals
                         + "val __t"
@@ -1426,11 +1426,11 @@ pub default fn query(syntax q: string) -> unknown {
         }
         var held = tieVals + pipe;
         var hi = holes.length;
-        for (holes) { hp ->
+        for hp in holes {
             hi = hi - 1;
             val mine = ties.filter({ tt -> tt.0 == hi });
             var firstWit = "";
-            for (mine) { mw ->
+            for mw in mine {
                 if (firstWit == "") firstWit = mw.1;
             }
             val head = if (firstWit != "")
@@ -1448,7 +1448,7 @@ pub default fn query(syntax q: string) -> unknown {
         pipe = held;
         // ④ the reference tree
         var nodes: array<CustomNode> = [];
-        for (toks) { t ->
+        for t in toks {
             val tk = t.0;
             val tx = t.1;
             val isLogical = tk == "keyword" && (tx == "and" || tx == "or");
