@@ -24,7 +24,7 @@ fn label(order: Order) -> string {
 }
 
 fn printAll(lines: string[]) -> void {
-    for line in lines {
+    for (lines) { line ->
         terminal.print(line);
     }
 }

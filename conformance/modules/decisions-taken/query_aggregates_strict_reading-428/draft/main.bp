@@ -34,7 +34,7 @@ pub fn main() -> void {
     terminal.print(withCoupon);
     // With `group by`, the group field and aggregates only; `order by` names the group.
     val byCity = query @`select city, count(*), sum(total) from orders group by city order by city asc`;
-    for row in byCity {
+    for (byCity) { row ->
         val #(city, count, sum) = row;
         terminal.print(city + " " + count.toString() + " " + sum.toString());
     }
