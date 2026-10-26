@@ -14,7 +14,7 @@
   parent link points at the meta repository's `AGENTS.md`.
 
 - **Front 95 — `modules/erika-test/`.** The `<lib>-test` member every library
-  carries (`specs/1.0.10-beta/02-packaging/README.md` § 5): an empty `pub`
+  carries (`specs/02-packaging/README.md` § 5): an empty `pub`
   surface, `{ "erika": { "workspace": true } }`, and one inline test proving the
   core resolves from it — 1/1 on commonJS and erlang. The core stays 31/31.
 
